@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ollama Cloud Usage Tracker - Options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Options</h1>
+      <p class="subtitle">Configure Ollama Cloud Usage Tracker</p>
+    </header>
+
+    <main>
+      <section class="settings-section">
+        <h2>Refresh Interval</h2>
+        <p class="setting-description">How often to fetch usage data from Ollama. Minimum 1 minute to avoid rate limiting.</p>
+        <div class="setting-control">
+          <select id="refreshInterval" aria-label="Refresh interval in minutes">
+            <option value="1">1 minute</option>
+            <option value="5" selected>5 minutes (recommended)</option>
+            <option value="15">15 minutes</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Notification Thresholds</h2>
+        <p class="setting-description">Show system notification when usage exceeds these percentages.</p>
+
+        <div class="setting-row">
+          <label for="notifyWarning">Warning threshold (%)</label>
+          <input
+            type="number"
+            id="notifyWarning"
+            min="1"
+            max="100"
+            value="80"
+            aria-label="Warning notification threshold percentage"
+          >
+        </div>
+
+        <div class="setting-row">
+          <label for="notifyCritical">Critical threshold (%)</label>
+          <input
+            type="number"
+            id="notifyCritical"
+            min="1"
+            max="100"
+            value="95"
+            aria-label="Critical notification threshold percentage"
+          >
+        </div>
+
+        <div class="setting-row checkbox-row">
+          <input type="checkbox" id="notifyEnabled" checked>
+          <label for="notifyEnabled">Enable notifications</label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Display</h2>
+        <p class="setting-description">Peak / off-peak hours come from the pricing page at ollama.com/pricing (weekdays 12:00&ndash;18:00 UTC are peak) and are computed locally.</p>
+        <div class="setting-row checkbox-row">
+          <input type="checkbox" id="showPeakBanner" checked>
+          <label for="showPeakBanner">Show peak / off-peak pricing banner in the popup</label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Diagnostics</h2>
+        <p class="setting-description">If the popup says it cannot read the Ollama page, copy a sanitised snapshot of the page (e-mail addresses masked, no cookies) to share when reporting the problem.</p>
+        <button id="diagnosticsBtn" class="btn btn-secondary">Copy page diagnostics</button>
+        <p id="diagnosticsStatus" class="clear-status hidden"></p>
+      </section>
+
+      <section class="settings-section danger-section">
+        <h2>Data Management</h2>
+        <p class="setting-description">Clear all locally stored usage data and reset the extension.</p>
+        <button id="clearDataBtn" class="btn btn-danger">Clear All Local Data</button>
+        <p id="clearStatus" class="clear-status hidden"></p>
+      </section>
+
+      <section class="settings-section info-section">
+        <h2>About</h2>
+        <p class="setting-description">
+          Ollama Cloud Usage Tracker v1.1.0<br>
+          Privacy-first: No telemetry, no external servers, all data stays in your browser.
+        </p>
+        <p class="setting-description">
+          Source code: <a href="https://github.com/yourusername/ollama-cloud-usage-tracker" target="_blank" rel="noopener">GitHub</a>
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <button id="saveBtn" class="btn btn-primary">Save Settings</button>
+    </footer>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

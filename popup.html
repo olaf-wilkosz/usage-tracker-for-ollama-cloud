@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ollama Cloud Usage Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header id="mainHeader">
+      <h1>
+        <span id="headerTitle">Ollama Cloud Usage</span>
+        <span id="tierBadge" class="tier-badge" hidden></span>
+      </h1>
+      <div class="header-actions">
+        <button id="refreshBtn" class="icon-btn" title="Refresh now" aria-label="Refresh usage data">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+        <!-- Same button in both views: gear opens settings, X closes them (the header never moves) -->
+        <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Open settings">
+          <svg id="closeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" hidden>
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+          <svg id="gearIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main usage view -->
+    <main id="mainView" class="scroll-view">
+      <!-- Status/Error display -->
+      <div id="statusContainer" class="status-container" hidden role="alert"></div>
+
+      <!-- Peak / off-peak pricing hours (from ollama.com/pricing, computed locally) -->
+      <div id="peakBanner" class="peak-banner" hidden>
+        <span class="peak-dot" aria-hidden="true"></span>
+        <span id="peakTitle" class="peak-title"></span>
+        <span id="peakDetail" class="peak-detail"></span>
+      </div>
+
+      <!-- One block per usage window found on the page (built in popup.js) -->
+      <div id="metersContainer" class="meters"></div>
+
+      <section id="creditsBlock" class="usage-block" hidden>
+        <div class="usage-row">
+          <span class="usage-label">Usage credits</span>
+          <span id="creditsAmount" class="usage-value">--</span>
+        </div>
+        <div id="creditsNote" class="usage-reset" hidden></div>
+      </section>
+
+      <section id="modelsBlock" class="usage-block" hidden>
+        <div id="modelsHeading" class="block-heading">Models used</div>
+        <div class="models-layout">
+          <div id="modelsDonut" class="donut"></div>
+          <ul id="modelsList" class="model-list"></ul>
+        </div>
+      </section>
+
+      <details id="recentBlock" class="usage-block collapsible" hidden>
+        <summary>
+          <span class="block-heading">Recent requests</span>
+          <span id="recentSummary" class="summary-note"></span>
+        </summary>
+        <ul id="recentList" class="recent-list"></ul>
+      </details>
+
+      <section id="activityBlock" class="usage-block">
+        <div class="block-heading-row">
+          <span class="block-heading">Activity</span>
+          <div class="seg-toggle" role="group" aria-label="Activity range">
+            <button id="activityWeekBtn" class="seg-btn active" type="button">Week</button>
+            <button id="activityMonthBtn" class="seg-btn" type="button">Month</button>
+          </div>
+        </div>
+        <div id="activityGrid" class="heatmap"></div>
+        <div id="activityNote" class="activity-note"></div>
+      </section>
+
+      <div id="lastUpdated" class="last-updated" hidden>Last updated: --</div>
+    </main>
+
+    <!-- In-popup settings panel (hidden until the gear icon is clicked) -->
+    <section id="settingsView" class="settings-view scroll-view" hidden>
+      <div class="setting-group">
+        <label for="refreshInterval">Refresh interval</label>
+        <select id="refreshInterval" aria-label="Refresh interval in minutes">
+          <option value="1">1 minute</option>
+          <option value="5" selected>5 minutes (recommended)</option>
+          <option value="15">15 minutes</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label>Notification thresholds</label>
+        <div class="setting-row">
+          <label for="notifyWarning" class="setting-row-label">Warning (%)</label>
+          <input type="number" id="notifyWarning" min="1" max="100" value="80"
+                 aria-label="Warning notification threshold percentage">
+        </div>
+        <div class="setting-row">
+          <label for="notifyCritical" class="setting-row-label">Critical (%)</label>
+          <input type="number" id="notifyCritical" min="1" max="100" value="95"
+                 aria-label="Critical notification threshold percentage">
+        </div>
+        <div class="setting-row checkbox-row">
+          <input type="checkbox" id="notifyEnabled" checked>
+          <label for="notifyEnabled">Enable notifications</label>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>Display</label>
+        <div class="setting-row checkbox-row">
+          <input type="checkbox" id="showPeakBanner" checked>
+          <label for="showPeakBanner">Show peak / off-peak pricing banner</label>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <button id="diagnosticsBtn" class="btn btn-secondary">Copy page diagnostics</button>
+        <p id="diagnosticsStatus" class="clear-status" hidden></p>
+      </div>
+
+      <div class="setting-group">
+        <button id="clearDataBtn" class="btn btn-danger">Clear All Local Data</button>
+        <p id="clearStatus" class="clear-status" hidden></p>
+      </div>
+
+      <button id="saveBtn" class="btn btn-primary">Save Settings</button>
+    </section>
+
+    <footer>
+      <a href="https://ollama.com/settings" target="_blank" rel="noopener" class="settings-link">
+        Open Ollama Settings
+      </a>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

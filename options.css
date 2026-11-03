@@ -1,0 +1,280 @@
+/* Options page styles for Ollama Cloud Usage Tracker */
+
+:root {
+  --bg-primary: #1a1b1e;
+  --bg-secondary: #232428;
+  --bg-tertiary: #2d2e33;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --text-muted: #6a6a6a;
+  --accent-green: #388e3c;
+  --accent-yellow: #f57c00;
+  --accent-red: #d32f2f;
+  --accent-blue: #1976d2;
+  --border-color: #3a3b3f;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --radius: 8px;
+  --transition: 0.2s ease;
+  --max-width: 520px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-width: var(--max-width);
+  padding: 0;
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Header */
+header {
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Sections */
+.settings-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.settings-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.setting-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Setting controls */
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.setting-control select,
+.setting-control input[type="number"] {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 10px 14px;
+  min-width: 160px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.setting-control select:focus,
+.setting-control input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+}
+
+.setting-control select:hover,
+.setting-control input[type="number"]:hover {
+  border-color: #555;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.setting-row:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-row label {
+  font-size: 14px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.setting-row input[type="number"] {
+  width: 80px;
+  text-align: right;
+  padding: 8px 12px;
+}
+
+.checkbox-row {
+  border-bottom: none !important;
+  padding-top: 8px !important;
+  padding-bottom: 0 !important;
+}
+
+.checkbox-row label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-blue);
+  cursor: pointer;
+}
+
+/* Buttons */
+.btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), transform 0.1s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.4);
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background: #1565c0;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+  width: 100%;
+}
+
+.btn-danger:hover {
+  background: rgba(211, 47, 47, 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Danger section */
+.danger-section {
+  border-color: rgba(211, 47, 47, 0.3);
+}
+
+.danger-section h2 {
+  color: var(--accent-red);
+}
+
+/* Clear status */
+.clear-status {
+  margin-top: 12px;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+}
+
+.clear-status.success {
+  background: rgba(56, 142, 60, 0.15);
+  border: 1px solid var(--accent-green);
+  color: #81c784;
+}
+
+.clear-status.error {
+  background: rgba(211, 47, 47, 0.15);
+  border: 1px solid var(--accent-red);
+  color: #ef9a9a;
+}
+
+.clear-status.hidden {
+  display: none;
+}
+
+/* Info section */
+.info-section {
+  border-color: rgba(25, 118, 210, 0.3);
+}
+
+.info-section a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.info-section a:hover {
+  text-decoration: underline;
+}
+
+/* Footer */
+footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

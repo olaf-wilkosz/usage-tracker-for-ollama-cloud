@@ -1,0 +1,770 @@
+/* Popup styles for Ollama Cloud Usage Tracker */
+
+:root {
+  --bg-primary: #1a1b1e;
+  --bg-secondary: #232428;
+  --bg-tertiary: #2d2e33;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --text-muted: #6a6a6a;
+  --accent-green: #388e3c;
+  --accent-yellow: #f57c00;
+  --accent-red: #d32f2f;
+  --accent-blue: #1976d2;
+  --border-color: #3a3b3f;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --radius: 8px;
+  --transition: 0.2s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* [hidden] has the same specificity as a plain class/tag selector, so a later rule setting
+   display (e.g. `main { display: flex }`, `.scroll-view { display: flex }`) silently wins
+   over it in source order and the element stays visible. Force it here so toggling the
+   `hidden` property always works regardless of what other display rules exist. */
+[hidden] {
+  display: none !important;
+}
+
+/* Chrome sizes the popup window to fit document.body's content box. A width RANGE (min/max)
+   let that box - and so the popup itself - end up a different width per view, causing a
+   horizontal shift on toggle. Pin it to one fixed value instead; scrolling is handled inside
+   .scroll-view, not here (see below) - Chrome does not let the popup be shaped via CSS beyond
+   that (no border-radius on html/body affects the outer popup window - tried and confirmed
+   not to work) so the outer corners are up to the browser/OS regardless. */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  width: 360px;
+  padding: 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* Header */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Optical symmetry: the 16px icons sit inside 28px buttons (6px of padding each side), so
+     10px of padding puts the icon glyphs 16px from the top, bottom and right edge - the same
+     16px the title keeps from the left edge. */
+  padding: 10px 10px 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+  gap: 8px;
+}
+
+header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tier-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), color var(--transition);
+}
+
+.icon-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.icon-btn:active {
+  background: var(--border-color);
+}
+
+/* Main content - shared by #mainView and #settingsView so both views scroll identically;
+   header/footer sit outside this container and never move. */
+.scroll-view {
+  flex: none; /* flex: 1 would ignore the fixed height below and grow with the content */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* Fixed (not max) height: every view - usage, settings, empty/error states - is exactly
+     as tall, so switching never resizes the popup. Header + 480px + footer stays under
+     Chrome's ~600px popup cap. */
+  height: 480px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* Dark, slim scrollbar in the popup's own palette instead of the browser's light default.
+   The 3px transparent border + padding-box clip draws a 4px pill inside a 10px-wide gutter
+   (so the layout width stays the same as before). ::-webkit-scrollbar is used rather than
+   scrollbar-color because the latter isn't honored by older Chromium versions. */
+.scroll-view::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scroll-view::-webkit-scrollbar-track,
+.scroll-view::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scroll-view::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+.scroll-view::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  background-clip: padding-box;
+}
+
+.scroll-view::-webkit-scrollbar-thumb:active {
+  background: var(--accent-blue);
+  background-clip: padding-box;
+}
+
+/* Status container for errors */
+.status-container {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: slideIn 0.2s ease;
+}
+
+.status-container.auth_required {
+  background: rgba(25, 118, 210, 0.15);
+  border: 1px solid var(--accent-blue);
+  color: #90caf9;
+}
+
+.status-container.parse_error {
+  background: rgba(245, 124, 0, 0.15);
+  border: 1px solid var(--accent-yellow);
+  color: #ffcc80;
+}
+
+.status-container.network_error {
+  background: rgba(211, 47, 47, 0.15);
+  border: 1px solid var(--accent-red);
+  color: #ef9a9a;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Usage sections - mirrors the text layout on ollama.com/settings itself, since data only
+   refreshes every few minutes anyway (no point in an animated live gauge). */
+.usage-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.usage-block + .usage-block {
+  margin-top: 0;
+}
+
+.usage-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.usage-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.usage-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-reset {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.model-list-heading {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.model-list {
+  list-style: none;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-list:empty {
+  margin-top: 0;
+}
+
+.model-list li,
+.recent-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.model-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Name on the first line, muted detail ("34 requests · 64%", "3h ago") on the second */
+.model-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-name {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-requests {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.model-list,
+.recent-list {
+  gap: 7px;
+}
+
+.recent-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-cost {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented usage bar - one colored, proportionally-sized block per model */
+.segment-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  margin-top: 8px;
+}
+
+.segment-bar .segment {
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.segment-bar .segment + .segment {
+  border-left: 1px solid var(--bg-primary);
+}
+
+/* Usage windows are built dynamically - one .usage-block per window on the page */
+.meters {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.meters:empty {
+  display: none;
+}
+
+.empty-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.credits-link {
+  color: var(--accent-blue);
+}
+
+/* Peak / off-peak pricing banner */
+.peak-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.peak-banner.offpeak {
+  background: rgba(56, 142, 60, 0.12);
+  border-color: rgba(56, 142, 60, 0.45);
+}
+
+.peak-banner.peak {
+  background: rgba(245, 124, 0, 0.12);
+  border-color: rgba(245, 124, 0, 0.45);
+}
+
+.peak-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.peak-banner.offpeak .peak-dot {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+}
+
+.peak-banner.peak .peak-dot {
+  background: var(--accent-yellow);
+  box-shadow: 0 0 6px var(--accent-yellow);
+}
+
+.peak-title {
+  font-weight: 600;
+}
+
+.peak-detail {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Block headings (models, activity) */
+.block-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.block-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+#modelsHeading {
+  margin-bottom: 10px;
+}
+
+/* Model breakdown: donut + legend */
+.models-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.donut {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.donut-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.donut-svg circle {
+  transition: opacity var(--transition);
+}
+
+.donut-svg circle:hover {
+  opacity: 0.8;
+}
+
+.donut-total {
+  font-size: 8px;
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+
+.donut-caption {
+  font-size: 3.4px;
+  fill: var(--text-muted);
+}
+
+.models-layout .model-list {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+/* Collapsible block (Recent requests): summary row with a chevron, content below */
+.collapsible > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin: 0 4px 3px 2px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--transition);
+}
+
+.collapsible[open] > summary::after {
+  margin-bottom: -3px;
+  transform: rotate(-135deg);
+}
+
+.collapsible > summary:hover::after {
+  border-color: var(--text-primary);
+}
+
+.collapsible > summary:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.summary-note {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.collapsible[open] .recent-list {
+  margin-top: 12px;
+}
+
+/* Activity heatmap (green scale, like ClaudeKarma) */
+.heatmap {
+  --heat-0: var(--bg-primary);
+  --heat-1: #0e4429;
+  --heat-2: #006d32;
+  --heat-3: #26a641;
+  --heat-4: #39d353;
+  display: grid;
+  gap: 2px;
+  align-items: center;
+}
+
+.heatmap.week {
+  grid-template-columns: 32px repeat(24, minmax(0, 1fr));
+}
+
+.heatmap.month {
+  grid-template-columns: 44px repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.hm-hour,
+.hm-label {
+  font-size: 9px;
+  line-height: 1;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.hm-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--heat-0);
+}
+
+.heatmap.month .hm-cell {
+  aspect-ratio: auto;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.hm-cell.level-1 { background: var(--heat-1); }
+.hm-cell.level-2 { background: var(--heat-2); }
+.hm-cell.level-3 { background: var(--heat-3); }
+.hm-cell.level-4 { background: var(--heat-4); }
+
+.hm-cell.future {
+  opacity: 0.35;
+}
+
+.activity-note {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Week / Month toggle */
+.seg-toggle {
+  display: flex;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--bg-primary);
+}
+
+.seg-btn {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.seg-btn.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Last updated */
+.last-updated {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 4px;
+}
+
+/* Footer */
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-link {
+  font-size: 12px;
+  color: var(--accent-blue);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.settings-link:hover {
+  color: #64b5f6;
+  text-decoration: underline;
+}
+
+/* In-popup settings panel - scroll behavior comes from .scroll-view (shared with #mainView) */
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-group > label:first-child {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.setting-group select,
+.setting-group input[type="number"] {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 8px 10px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.setting-group select:focus,
+.setting-group input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-row-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.setting-row input[type="number"] {
+  width: 64px;
+  text-align: right;
+  padding: 6px 8px;
+}
+
+.checkbox-row {
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.checkbox-row label {
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-blue);
+  cursor: pointer;
+}
+
+/* Buttons */
+.btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), transform 0.1s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background: #1565c0;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+  width: 100%;
+}
+
+.btn-danger:hover {
+  background: rgba(211, 47, 47, 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-status {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+}
+
+.clear-status.success {
+  background: rgba(56, 142, 60, 0.15);
+  border: 1px solid var(--accent-green);
+  color: #81c784;
+}
+
+.clear-status.error {
+  background: rgba(211, 47, 47, 0.15);
+  border: 1px solid var(--accent-red);
+  color: #ef9a9a;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .status-container {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: #666;
+    --text-muted: #ccc;
+  }
+}
