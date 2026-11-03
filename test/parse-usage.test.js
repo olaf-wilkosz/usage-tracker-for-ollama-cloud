@@ -3,7 +3,7 @@ import './support/dom.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import * as P from '../parse-usage.js';
+import * as P from '../extension/parse-usage.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const credits = fixture('settings-credits.html');

@@ -1,5 +1,5 @@
 /**
- * Background service worker for Ollama Cloud Usage Tracker.
+ * Background service worker for Usage Tracker for Ollama Cloud.
  * Handles periodic fetching, parsing via offscreen document, storage, toolbar icon updates,
  * activity history and notifications.
  */
@@ -19,7 +19,7 @@ const ALARM_NAME = 'ollamaUsageRefresh';
 const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
 const OLLAMA_SETTINGS_URL = 'https://ollama.com/settings';
 const DEFAULT_ICON_PATHS = { 16: 'icons/icon16.png', 32: 'icons/icon32.png', 48: 'icons/icon48.png', 128: 'icons/icon128.png' };
-const DEFAULT_TITLE = 'Ollama Cloud Usage Tracker';
+const DEFAULT_TITLE = 'Usage Tracker for Ollama Cloud';
 
 const MAX_CONSECUTIVE_ERRORS = 3;
 const MAX_ICON_RINGS = 3;
@@ -315,7 +315,7 @@ async function sendTestNotification() {
   await chrome.notifications.create('ollama-usage-test', {
     type: 'basic',
     iconUrl: 'icons/icon48.png',
-    title: 'Ollama Cloud Usage Tracker',
+    title: 'Usage Tracker for Ollama Cloud',
     message: 'Notifications work. You will be alerted when usage crosses your thresholds.',
     priority: 1
   });

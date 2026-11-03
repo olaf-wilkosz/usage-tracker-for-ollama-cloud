@@ -1,5 +1,5 @@
 /**
- * Popup logic for Ollama Cloud Usage Tracker.
+ * Popup logic for Usage Tracker for Ollama Cloud.
  * Reads usage data from storage and renders every usage window the page reports (a "Free
  * usage" window, legacy session + weekly windows, ...) plus the credits balance, a model
  * breakdown donut, an activity heatmap and the peak / off-peak pricing banner. An in-popup

@@ -5,8 +5,8 @@ import './support/dom.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import * as P from '../parse-usage.js';
-import * as A from '../activity.js';
+import * as P from '../extension/parse-usage.js';
+import * as A from '../extension/activity.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const realFree = fixture('settings-free.html');
@@ -75,7 +75,7 @@ const page = ({ percent, requests, resetsAt, withCredits = true }) => `<html><bo
 const ok = (html) => () => ({ type: 'basic', status: 200, ok: true, text: async () => html });
 const redirect = () => ({ type: 'basic', status: 303, ok: false, text: async () => '' });
 
-await import('../background.js');
+await import('../extension/background.js');
 const send = (message) => new Promise((resolve) => handlers.message(message, {}, resolve));
 const refresh = async () => assert.equal((await send({ type: 'FORCE_REFRESH' })).success, true);
 const alerts = () => notes.filter((n) => n.id.startsWith('ollama-usage-free'));
@@ -148,7 +148,7 @@ await test('credits-only account (no usage windows): default icon + credits titl
   assert.equal(store.ollamaUsageData.status, 'ok');
   assert.equal(store.ollamaUsageData.meters.length, 0);
   assert.ok(icons.at(-1).path, 'static icon');
-  assert.equal(titles.at(-1), 'Ollama Cloud Usage Tracker\nCredits: $0');
+  assert.equal(titles.at(-1), 'Usage Tracker for Ollama Cloud\nCredits: $0');
   assert.equal(badge.text, '', 'badge cleared');
 });
 
@@ -282,5 +282,5 @@ await test('CLEAR_DATA wipes storage and resets icon', async () => {
   assert.equal((await send({ type: 'CLEAR_DATA' })).success, true);
   assert.deepEqual(Object.keys(store), []);
   assert.ok(icons.at(-1).path);
-  assert.equal(titles.at(-1), 'Ollama Cloud Usage Tracker');
+  assert.equal(titles.at(-1), 'Usage Tracker for Ollama Cloud');
 });

@@ -1,5 +1,5 @@
 /**
- * Options page logic for Ollama Cloud Usage Tracker.
+ * Options page logic for Usage Tracker for Ollama Cloud.
  * Handles settings persistence and communication with background script.
  */
 

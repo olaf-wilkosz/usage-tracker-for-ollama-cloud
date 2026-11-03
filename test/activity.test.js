@@ -1,7 +1,7 @@
 // Heatmap grids built from hourly activity buckets.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as A from '../activity.js';
+import * as A from '../extension/activity.js';
 
 test('activity: keys, week grid, month grid, level, kind pick', () => {
   const now = new Date(2026, 10, 3, 15, 30); // Tue 3 Nov 2026 local

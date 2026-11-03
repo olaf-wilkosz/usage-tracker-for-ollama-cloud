@@ -1,7 +1,7 @@
 // Peak / off-peak pricing window (weekdays 12:00-18:00 UTC, per ollama.com/pricing).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as H from '../peak-hours.js';
+import * as H from '../extension/peak-hours.js';
 
 test('peak hours: weekday window, weekend, countdowns', () => {
   const at = (iso) => H.getPeakStatus(new Date(iso));
