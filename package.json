@@ -1,0 +1,16 @@
+{
+  "name": "ollama-cloud-usage-tracker",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension (Manifest V3) that shows Ollama Cloud usage. This file only exists to run the tests - the extension itself has no build step and no runtime dependencies.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
