@@ -13,7 +13,9 @@ import {
   pickModelsSource,
   secondsUntil
 } from './parse-usage.js';
-import { loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, DEFAULT_SETTINGS } from './settings.js';
+import {
+  loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, DEFAULT_SETTINGS
+} from './settings.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
 import { pickActivityBuckets, buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
@@ -58,6 +60,8 @@ const elements = {
   notifyCritical: document.getElementById('notifyCritical'),
   notifyEnabled: document.getElementById('notifyEnabled'),
   showPeakBanner: document.getElementById('showPeakBanner'),
+  testNotifyBtn: document.getElementById('testNotifyBtn'),
+  testNotifyStatus: document.getElementById('testNotifyStatus'),
   diagnosticsBtn: document.getElementById('diagnosticsBtn'),
   diagnosticsStatus: document.getElementById('diagnosticsStatus'),
   clearDataBtn: document.getElementById('clearDataBtn'),
@@ -70,6 +74,12 @@ let activityData = null;
 let activityMode = 'week';
 let settingsOpen = false;
 let planLabel = null;
+let learnedColors = {}; // model -> color as ollama.com paints it (see background.js)
+
+/** The model's own ollama.com color when it has been seen, else the built-in fallback. */
+function colorFor(model) {
+  return modelColor(model, learnedColors);
+}
 
 /** Create an element with an optional class and text. */
 function el(tag, className, text) {
@@ -120,10 +130,10 @@ function renderSegmentBar(barEl, models, usedPercent) {
     return;
   }
 
-  for (const { model, requests } of list) {
+  for (const { model, requests, color } of list) {
     const segment = el('div', 'segment');
     segment.style.width = `${(requests / total) * percent}%`;
-    segment.style.background = modelColor(model);
+    segment.style.background = color || colorFor(model);
     segment.title = `${model}: ${requests} request${requests === 1 ? '' : 's'}`;
     barEl.appendChild(segment);
   }
@@ -239,7 +249,7 @@ const DAY_MS = 86400000;
  * @returns {Array<{label: string, requests: number, color: string, members: string|null}>}
  */
 function buildLegendItems(models) {
-  const items = models.map(({ model, requests }) => ({ label: model, requests, color: modelColor(model), members: null }));
+  const items = models.map(({ model, requests, color }) => ({ label: model, requests, color: color || colorFor(model), members: null }));
   if (items.length <= MAX_LEGEND_ROWS) return items;
 
   const head = items.slice(0, MAX_LEGEND_ROWS - 1);
@@ -330,7 +340,7 @@ function renderRecent(requests) {
     li.title = new Date(request.at).toLocaleString();
 
     const swatch = el('span', 'model-swatch');
-    swatch.style.background = modelColor(request.model);
+    swatch.style.background = colorFor(request.model);
     const text = el('div', 'model-text');
     const when = el('div', 'model-requests');
     when.dataset.at = request.at;
@@ -652,10 +662,11 @@ async function init() {
   const [data, settings, stored] = await Promise.all([
     loadUsageData(),
     loadSettings(),
-    chrome.storage.local.get('ollamaActivity')
+    chrome.storage.local.get(['ollamaActivity', 'ollamaModelColors'])
   ]);
   currentSettings = settings;
   activityData = stored.ollamaActivity || null;
+  learnedColors = stored.ollamaModelColors || {};
 
   renderUsage(data);
   renderActivity();
@@ -702,6 +713,18 @@ async function init() {
     }
   });
 
+  elements.testNotifyBtn.addEventListener('click', async () => {
+    const result = await sendTestNotification();
+    showInlineStatus(
+      elements.testNotifyStatus,
+      result.success
+        ? 'Sent. Nothing showed up? Check Do Not Disturb / Focus Assist and your browser’s notification settings.'
+        : `Not sent: ${result.error}.`,
+      result.success,
+      7000
+    );
+  });
+
   elements.diagnosticsBtn.addEventListener('click', async () => {
     const result = await copyDiagnostics();
     showInlineStatus(
@@ -740,6 +763,10 @@ async function init() {
   // Listen for storage changes (updates from background)
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
+    // Colors first: background.js writes them together with the usage data it renders
+    if (changes.ollamaModelColors) {
+      learnedColors = changes.ollamaModelColors.newValue || {};
+    }
     if (changes.ollamaUsageData) {
       renderUsage(changes.ollamaUsageData.newValue);
     }

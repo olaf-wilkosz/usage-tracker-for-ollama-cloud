@@ -192,10 +192,27 @@ function readReset(el) {
   return base;
 }
 
+// Only plain color values are accepted: this string ends up in an element's inline style
+const COLOR_RE = /^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([0-9.,%\s/-]+\))$/i;
+
 /**
- * Per-model usage breakdown read from progress-bar segments (exact request counts).
+ * The background color of an element's inline style, e.g. "width: 66%; background: #76b900"
+ * -> "#76b900". Returns null unless it is a plain hex / rgb() / hsl() value.
+ * @param {string|null} style
+ * @returns {string|null}
+ */
+function extractColor(style) {
+  if (!style) return null;
+  const match = style.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i);
+  const color = match ? match[1].trim() : '';
+  return COLOR_RE.test(color) ? color : null;
+}
+
+/**
+ * Per-model usage breakdown read from progress-bar segments: exact request counts and the
+ * color ollama.com itself paints the model with (inline style on the segment).
  * @param {Element[]} segmentEls
- * @returns {Array<{model: string, requests: number}>}
+ * @returns {Array<{model: string, requests: number, color?: string}>}
  */
 function readModels(segmentEls) {
   const byModel = new Map();
@@ -203,9 +220,13 @@ function readModels(segmentEls) {
     const model = el.getAttribute('data-model') || '';
     if (!model) continue;
     const requests = parseInt(el.getAttribute('data-requests'), 10) || 0;
-    byModel.set(model, Math.max(requests, byModel.get(model) ?? 0));
+    const previous = byModel.get(model);
+    byModel.set(model, {
+      requests: Math.max(requests, previous?.requests ?? 0),
+      color: previous?.color ?? extractColor(el.getAttribute('style'))
+    });
   }
-  return Array.from(byModel, ([model, requests]) => ({ model, requests }));
+  return Array.from(byModel, ([model, { requests, color }]) => (color ? { model, requests, color } : { model, requests }));
 }
 
 /**
@@ -548,6 +569,7 @@ function getBadgeColor(percent) {
 export {
   SELECTORS,
   stripInlineHandlers,
+  extractColor,
   extractPercent,
   extractResetSeconds,
   secondsUntil,

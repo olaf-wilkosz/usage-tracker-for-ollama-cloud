@@ -18,6 +18,7 @@ const notes = [];
 const icons = [];
 const titles = [];
 const badge = { text: null, color: null, textColor: null };
+let permissionLevel = 'granted';
 let currentFetch;
 const handlers = {};
 
@@ -49,7 +50,11 @@ globalThis.chrome = {
     setIcon: async (a) => { icons.push(a); },
     setTitle: async ({ title }) => { titles.push(title); }
   },
-  notifications: { create: async (id, opts) => { notes.push({ id, opts }); }, clear: async () => {} },
+  notifications: {
+    create: async (id, opts) => { notes.push({ id, opts }); },
+    clear: async () => {},
+    getPermissionLevel: async () => permissionLevel
+  },
   offscreen: { createDocument: async () => {} }
 };
 globalThis.OffscreenCanvas = class {
@@ -230,6 +235,47 @@ await test('request log: repeated readings and a genuinely new request', async (
   assert.equal(store.ollamaActivity.seen[0], now.toISOString(), 'newest id first');
   assert.equal(A.pickActivityBuckets(store.ollamaActivity).kind, 'requests');
   assert.equal(A.pickActivityBuckets(store.ollamaActivity).buckets, store.ollamaActivity.log);
+});
+
+
+await test('model colors read from the page are remembered (and survive an error reading)', async () => {
+  currentFetch = ok(realFree);
+  await refresh();
+  assert.deepEqual(store.ollamaModelColors, { 'nemotron-3-ultra': '#76b900', 'web search': '#22c55e' });
+
+  // a later page with a new model + a changed color: merged, newest wins
+  const html = realFree
+    .replace('data-model="web search" data-requests="19"', 'data-model="kimi-k3" data-requests="19"')
+    .replace('background: #22c55e', 'background: #ec4899');
+  currentFetch = ok(html);
+  await refresh();
+  assert.equal(store.ollamaModelColors['kimi-k3'], '#ec4899');
+  assert.equal(store.ollamaModelColors['web search'], '#22c55e', 'older entries are kept');
+
+  // an unreadable page must not wipe what was learned
+  currentFetch = redirect;
+  await refresh();
+  assert.equal(Object.keys(store.ollamaModelColors).length, 3);
+});
+
+await test('test notification: sent when granted, reported (not sent) when the browser blocks it', async () => {
+  const before = notes.length;
+  const ok1 = await send({ type: 'TEST_NOTIFICATION' });
+  assert.deepEqual(ok1, { success: true, level: 'granted' });
+  assert.equal(notes.length, before + 1);
+  assert.equal(notes.at(-1).id, 'ollama-usage-test');
+
+  permissionLevel = 'denied';
+  const blocked = await send({ type: 'TEST_NOTIFICATION' });
+  assert.equal(blocked.success, false);
+  assert.equal(blocked.level, 'denied');
+  assert.match(blocked.error, /blocked/);
+  assert.equal(notes.length, before + 1, 'nothing shown while blocked');
+  permissionLevel = 'granted';
+
+  // works even with notifications switched off in the settings
+  store.settings = { ...store.settings, notifyEnabled: false };
+  assert.equal((await send({ type: 'TEST_NOTIFICATION' })).success, true);
 });
 
 await test('CLEAR_DATA wipes storage and resets icon', async () => {

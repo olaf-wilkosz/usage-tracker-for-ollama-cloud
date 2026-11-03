@@ -13,6 +13,8 @@ const DIAGNOSTICS_KEY = 'ollamaDiagnostics'; // sanitised page snapshot for "Cop
 const ACTIVITY_KEY = 'ollamaActivity'; // hourly activity buckets for the popup heatmap
 const NOTIFIED_KEY = 'ollamaNotified'; // per-meter notification state (no repeat alerts)
 const ERROR_COUNT_KEY = 'ollamaErrorCount'; // persisted: the service worker is restarted between alarms
+const COLORS_KEY = 'ollamaModelColors'; // model -> color, as ollama.com paints it
+const MAX_LEARNED_COLORS = 200;
 const ALARM_NAME = 'ollamaUsageRefresh';
 const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
 const OLLAMA_SETTINGS_URL = 'https://ollama.com/settings';
@@ -299,6 +301,28 @@ async function checkThresholdNotifications(data, settings) {
 }
 
 /**
+ * Show a sample notification (settings -> "Send test"), so the user can check that
+ * notifications actually reach them. The "notifications" permission is granted at install,
+ * so there is no prompt - but the browser/OS can still block them per extension, which
+ * getPermissionLevel reports. Ignores the "Enable notifications" switch on purpose.
+ * @returns {Promise<{success: boolean, level: string, error?: string}>}
+ */
+async function sendTestNotification() {
+  const level = await chrome.notifications.getPermissionLevel();
+  if (level !== 'granted') {
+    return { success: false, level, error: 'Notifications are blocked for this extension in the browser settings' };
+  }
+  await chrome.notifications.create('ollama-usage-test', {
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: 'Ollama Cloud Usage Tracker',
+    message: 'Notifications work. You will be alerted when usage crosses your thresholds.',
+    priority: 1
+  });
+  return { success: true, level };
+}
+
+/**
  * Check for persistent errors and notify user
  */
 async function checkPersistentErrors(data, settings) {
@@ -427,6 +451,31 @@ async function recordActivity(data) {
 }
 
 /**
+ * Remember the colors ollama.com paints each model with (read from the usage bars), so a
+ * model keeps its real color wherever it shows up later. Newest colors win; the map is
+ * capped. Returns the updated map, or null when nothing changed.
+ */
+async function mergeLearnedColors(data) {
+  const seen = {};
+  for (const m of [...(data.meters || []).flatMap((meter) => meter.models || []), ...(data.models || [])]) {
+    if (m.model && m.color) seen[m.model] = m.color;
+  }
+  if (Object.keys(seen).length === 0) return null;
+
+  const stored = (await chrome.storage.local.get(COLORS_KEY))[COLORS_KEY] || {};
+  if (Object.entries(seen).every(([model, color]) => stored[model] === color)) return null;
+
+  // Re-inserting refreshed models last keeps recently seen ones when the cap trims the oldest
+  const merged = { ...stored };
+  for (const [model, color] of Object.entries(seen)) {
+    delete merged[model];
+    merged[model] = color;
+  }
+  const entries = Object.entries(merged);
+  return Object.fromEntries(entries.slice(Math.max(0, entries.length - MAX_LEARNED_COLORS)));
+}
+
+/**
  * Main refresh function - called by alarm. Concurrent calls (alarm + manual refresh) share
  * one run so activity deltas aren't double counted.
  */
@@ -444,6 +493,9 @@ async function doRefresh() {
 
   const toStore = { [STORAGE_KEY]: data };
   if (diagnostics) toStore[DIAGNOSTICS_KEY] = { html: diagnostics, at: data.lastFetch };
+  // Same write as the usage data so the popup sees colors and models in one storage event
+  const colors = await mergeLearnedColors(data);
+  if (colors) toStore[COLORS_KEY] = colors;
   await chrome.storage.local.set(toStore);
 
   await updateBadge(data);
@@ -513,6 +565,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       initializeAlarm(); // Re-create alarm with new interval
       sendResponse({ success: true });
     }).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === 'TEST_NOTIFICATION') {
+    sendTestNotification().then(sendResponse).catch(error => {
       sendResponse({ success: false, error: error.message });
     });
     return true;

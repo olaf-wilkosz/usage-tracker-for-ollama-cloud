@@ -41,7 +41,7 @@ test('real Free-usage page: meter, credits, plan, models, exact refill time', ()
   assert.equal(m.resetsAt, '2026-11-04T10:00:00.000Z');
   assert.equal(m.resetsAtApprox, false);
   assert.equal(m.resetVerb, 'Refills');
-  assert.deepEqual(m.models, [{ model: 'nemotron-3-ultra', requests: 34 }, { model: 'web search', requests: 19 }]);
+  assert.deepEqual(m.models, [{ model: 'nemotron-3-ultra', requests: 34, color: '#76b900' }, { model: 'web search', requests: 19, color: '#22c55e' }]);
   assert.equal(r.modelsLabel, 'Models used this month');
   assert.equal(P.pickModelsSource(r).label, 'Models used this month');
 });
@@ -122,7 +122,7 @@ test('free window: one meter, reset from data-time, stray past timestamp NOT att
   assert.equal(m.resetsAt, new Date(target).toISOString());
   assert.equal(m.resetsAtApprox, false);
   assert.equal(m.resetVerb, 'Refills');
-  assert.deepEqual(m.models, [{ model: 'gemma4:31b', requests: 7 }, { model: 'gpt-oss:120b', requests: 3 }]);
+  assert.deepEqual(m.models, [{ model: 'gemma4:31b', requests: 7, color: '#22c55e' }, { model: 'gpt-oss:120b', requests: 3, color: '#525252' }]);
   assert.equal(r.credits.amount, 0);
 });
 
@@ -210,4 +210,33 @@ test('formatResetTime', () => {
   assert.equal(P.formatResetTime(30), '< 1m');
   assert.equal(P.formatResetTime(-5), 'resetting...');
   assert.equal(P.formatResetTime(null), 'unknown');
+});
+
+// ---- model colors (read from the page, not guessed) ----
+test('extractColor: accepts plain colors only', () => {
+  assert.equal(P.extractColor('width: 66%; background: #76b900'), '#76b900');
+  assert.equal(P.extractColor('background-color:rgb(34, 197, 94)'), 'rgb(34, 197, 94)');
+  assert.equal(P.extractColor('background: hsl(120 40% 50%)'), 'hsl(120 40% 50%)');
+  assert.equal(P.extractColor('width: 10%'), null);
+  assert.equal(P.extractColor(null), null);
+  // anything that could smuggle more CSS into our inline style is rejected
+  assert.equal(P.extractColor('background: url(https://evil.example/x.png)'), null);
+  assert.equal(P.extractColor('background: red; position: fixed'), null);
+  assert.equal(P.extractColor('background: #fff url(x)'), null);
+  assert.equal(P.extractColor('background: expression(alert(1))'), null);
+});
+
+test('real page: each model carries the color ollama.com paints it with', () => {
+  const r = P.parseUsageHtml(realFree);
+  assert.deepEqual(r.meters[0].models, [
+    { model: 'nemotron-3-ultra', requests: 34, color: '#76b900' },
+    { model: 'web search', requests: 19, color: '#22c55e' }
+  ]);
+});
+
+test('a segment without a usable color just has no color field', () => {
+  const html = `<html><body><main><div class="flex justify-between"><span>Free usage</span><span>5% used</span></div>
+    <button data-usage-segment data-model="a" data-requests="1" style="background: url(x)"></button>
+    <button data-usage-segment data-model="b" data-requests="2"></button></main></body></html>`;
+  assert.deepEqual(P.parseUsageHtml(html).meters[0].models, [{ model: 'a', requests: 1 }, { model: 'b', requests: 2 }]);
 });

@@ -1,5 +1,10 @@
 /**
- * Colors for the per-model usage breakdown (segmented bar + list swatches).
+ * Colors for the per-model usage breakdown (segmented bar, donut, list swatches).
+ *
+ * Preferred source: the colors ollama.com itself paints each model with, read from the page
+ * on every refresh (parse-usage.js extractColor), remembered in storage so a model keeps its
+ * real color even in views where the page doesn't show it (e.g. the recent-requests list)
+ * and passed in here as `learned`. The tables below are only the offline fallback.
  *
  * KNOWN_MODEL_COLORS are colors actually observed on ollama.com/settings (verified via
  * getComputedStyle + the raw inline `style="background: #hex"` attribute on
@@ -30,12 +35,15 @@ const KNOWN_MODEL_COLORS = {
 const FALLBACK_PALETTE = ['#e0b400', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6'];
 
 /**
- * Get a display color for a model name: the real Ollama color if known, otherwise a
- * deterministic (hash-based) fallback so an unknown model still gets a stable color.
+ * Get a display color for a model name: the color learned from ollama.com, else a color
+ * observed earlier (table above), else a deterministic (hash-based) fallback so an unknown
+ * model still gets a stable color.
  * @param {string} model
+ * @param {Object<string, string>} [learned] - model -> color read from the page
  * @returns {string} CSS color
  */
-export function modelColor(model) {
+export function modelColor(model, learned = {}) {
+  if (learned[model]) return learned[model];
   if (KNOWN_MODEL_COLORS[model]) return KNOWN_MODEL_COLORS[model];
 
   let hash = 0;

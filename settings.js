@@ -66,6 +66,22 @@ export async function saveSettings(settings) {
 }
 
 /**
+ * Ask the background worker to show a sample notification
+ * @returns {Promise<{success: boolean, level?: string, error?: string}>}
+ */
+export async function sendTestNotification() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'TEST_NOTIFICATION' }, (response) => {
+      if (chrome.runtime.lastError) {
+        resolve({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        resolve(response || { success: false, error: 'No response' });
+      }
+    });
+  });
+}
+
+/**
  * Clear all local data
  */
 export async function clearAllData() {

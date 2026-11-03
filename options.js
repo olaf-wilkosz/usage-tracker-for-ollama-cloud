@@ -3,7 +3,10 @@
  * Handles settings persistence and communication with background script.
  */
 
-import { DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics } from './settings.js';
+import {
+  DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
+  sendTestNotification
+} from './settings.js';
 
 // DOM elements
 const elements = {
@@ -12,6 +15,8 @@ const elements = {
   notifyCritical: document.getElementById('notifyCritical'),
   notifyEnabled: document.getElementById('notifyEnabled'),
   showPeakBanner: document.getElementById('showPeakBanner'),
+  testNotifyBtn: document.getElementById('testNotifyBtn'),
+  testNotifyStatus: document.getElementById('testNotifyStatus'),
   diagnosticsBtn: document.getElementById('diagnosticsBtn'),
   diagnosticsStatus: document.getElementById('diagnosticsStatus'),
   clearDataBtn: document.getElementById('clearDataBtn'),
@@ -97,6 +102,19 @@ async function init() {
     } else {
       showSaveStatus(`Failed: ${result.error}`, false);
     }
+  });
+
+  // Test notification handler
+  elements.testNotifyBtn.addEventListener('click', async () => {
+    const result = await sendTestNotification();
+    showInlineStatus(
+      elements.testNotifyStatus,
+      result.success
+        ? 'Sent. Nothing showed up? Check Do Not Disturb / Focus Assist and your browser’s notification settings.'
+        : `Not sent: ${result.error}.`,
+      result.success,
+      7000
+    );
   });
 
   // Copy diagnostics handler
