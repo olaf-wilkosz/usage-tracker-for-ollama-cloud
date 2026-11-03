@@ -1,0 +1,345 @@
+{
+  "range": "30d",
+  "scope": "self",
+  "granularity": "day",
+  "group_by": "model",
+  "from": "2026-10-04T00:00:00Z",
+  "until": "2026-11-04T00:00:00Z",
+  "totals": {
+    "request_count": 69,
+    "usage_usd": 0.6277,
+    "input_tokens": 3450000,
+    "cached_input_tokens": 0,
+    "output_tokens": 55200,
+    "groups": [
+      {
+        "model": "nemotron-3-ultra",
+        "request_count": 41,
+        "usage_usd": 0.4377,
+        "input_tokens": 3450000,
+        "cached_input_tokens": 0,
+        "output_tokens": 55200
+      },
+      {
+        "model": "web_search",
+        "request_count": 28,
+        "usage_usd": 0.19,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0
+      }
+    ]
+  },
+  "buckets": [
+    {
+      "from": "2026-10-04T00:00:00Z",
+      "until": "2026-10-05T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-05T00:00:00Z",
+      "until": "2026-10-06T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-06T00:00:00Z",
+      "until": "2026-10-07T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-07T00:00:00Z",
+      "until": "2026-10-08T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-08T00:00:00Z",
+      "until": "2026-10-09T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-09T00:00:00Z",
+      "until": "2026-10-10T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-10T00:00:00Z",
+      "until": "2026-10-11T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-11T00:00:00Z",
+      "until": "2026-10-12T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-12T00:00:00Z",
+      "until": "2026-10-13T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-13T00:00:00Z",
+      "until": "2026-10-14T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-14T00:00:00Z",
+      "until": "2026-10-15T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-15T00:00:00Z",
+      "until": "2026-10-16T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-16T00:00:00Z",
+      "until": "2026-10-17T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-17T00:00:00Z",
+      "until": "2026-10-18T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-18T00:00:00Z",
+      "until": "2026-10-19T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-19T00:00:00Z",
+      "until": "2026-10-20T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-20T00:00:00Z",
+      "until": "2026-10-21T00:00:00Z",
+      "request_count": 5,
+      "usage_usd": 0.06,
+      "input_tokens": 250000,
+      "cached_input_tokens": 0,
+      "output_tokens": 4000,
+      "groups": []
+    },
+    {
+      "from": "2026-10-21T00:00:00Z",
+      "until": "2026-10-22T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-22T00:00:00Z",
+      "until": "2026-10-23T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-23T00:00:00Z",
+      "until": "2026-10-24T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-24T00:00:00Z",
+      "until": "2026-10-25T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-25T00:00:00Z",
+      "until": "2026-10-26T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-26T00:00:00Z",
+      "until": "2026-10-27T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-27T00:00:00Z",
+      "until": "2026-10-28T00:00:00Z",
+      "request_count": 12,
+      "usage_usd": 0.14,
+      "input_tokens": 600000,
+      "cached_input_tokens": 0,
+      "output_tokens": 9600,
+      "groups": []
+    },
+    {
+      "from": "2026-10-28T00:00:00Z",
+      "until": "2026-10-29T00:00:00Z",
+      "request_count": 30,
+      "usage_usd": 0.21,
+      "input_tokens": 1500000,
+      "cached_input_tokens": 0,
+      "output_tokens": 24000,
+      "groups": []
+    },
+    {
+      "from": "2026-10-29T00:00:00Z",
+      "until": "2026-10-30T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-30T00:00:00Z",
+      "until": "2026-10-31T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-10-31T00:00:00Z",
+      "until": "2026-11-01T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-01T00:00:00Z",
+      "until": "2026-11-02T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-02T00:00:00Z",
+      "until": "2026-11-03T00:00:00Z",
+      "request_count": 22,
+      "usage_usd": 0.2577,
+      "input_tokens": 1100000,
+      "cached_input_tokens": 0,
+      "output_tokens": 17600,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T00:00:00Z",
+      "until": "2026-11-04T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    }
+  ]
+}

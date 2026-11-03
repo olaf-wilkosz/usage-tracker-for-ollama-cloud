@@ -10,7 +10,6 @@
     <header id="mainHeader">
       <h1>
         <span id="headerTitle">Ollama Cloud Usage</span>
-        <span id="tierBadge" class="tier-badge" hidden></span>
       </h1>
       <div class="header-actions">
         <button id="refreshBtn" class="icon-btn" title="Refresh now" aria-label="Refresh usage data">
@@ -39,6 +38,13 @@
       <!-- Status/Error display -->
       <div id="statusContainer" class="status-container" hidden role="alert"></div>
 
+      <!-- Shown until an API key is connected (or when Ollama rejects it) -->
+      <section id="connectBlock" class="usage-block connect-block" hidden>
+        <div class="block-heading">Connect your Ollama account</div>
+        <p id="connectText" class="connect-text">The tracker reads your usage through Ollama's official API and needs an API key. Setup takes a minute.</p>
+        <button id="connectBtn" class="btn btn-primary" type="button">Set up</button>
+      </section>
+
       <!-- Peak / off-peak pricing hours (from ollama.com/pricing, computed locally) -->
       <div id="peakBanner" class="peak-banner" hidden>
         <span class="peak-dot" aria-hidden="true"></span>
@@ -51,7 +57,7 @@
 
       <section id="creditsBlock" class="usage-block" hidden>
         <div class="usage-row">
-          <span class="usage-label">Usage credits</span>
+          <span class="usage-label">Purchased credits</span>
           <span id="creditsAmount" class="usage-value">--</span>
         </div>
         <div id="creditsNote" class="usage-reset" hidden></div>
@@ -67,7 +73,7 @@
 
       <details id="recentBlock" class="usage-block collapsible" hidden>
         <summary>
-          <span class="block-heading">Recent requests</span>
+          <span class="block-heading">Recent activity</span>
           <span id="recentSummary" class="summary-note"></span>
         </summary>
         <ul id="recentList" class="recent-list"></ul>
@@ -128,7 +134,12 @@
       </div>
 
       <div class="setting-group">
-        <button id="diagnosticsBtn" class="btn btn-secondary">Copy page diagnostics</button>
+        <label>Ollama account</label>
+        <button id="manageKeyBtn" class="btn btn-secondary" type="button">Manage API key</button>
+      </div>
+
+      <div class="setting-group">
+        <button id="diagnosticsBtn" class="btn btn-secondary">Copy diagnostics</button>
         <p id="diagnosticsStatus" class="clear-status" hidden></p>
       </div>
 
@@ -142,7 +153,7 @@
 
     <footer>
       <a href="https://ollama.com/settings" target="_blank" rel="noopener" class="settings-link">
-        Open Ollama Settings
+        Open Ollama settings
       </a>
     </footer>
   </div>

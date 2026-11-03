@@ -5,11 +5,20 @@
 
 import {
   DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
-  sendTestNotification
+  sendTestNotification, hasApiKey, saveApiKey, removeApiKey
 } from './settings.js';
 
 // DOM elements
 const elements = {
+  connectedPill: document.getElementById('connectedPill'),
+  connectIntro: document.getElementById('connectIntro'),
+  connectSteps: document.getElementById('connectSteps'),
+  apiKeyLabel: document.getElementById('apiKeyLabel'),
+  apiKeyInput: document.getElementById('apiKeyInput'),
+  saveKeyBtn: document.getElementById('saveKeyBtn'),
+  removeKeyBtn: document.getElementById('removeKeyBtn'),
+  keyStatus: document.getElementById('keyStatus'),
+  version: document.getElementById('version'),
   refreshInterval: document.getElementById('refreshInterval'),
   notifyWarning: document.getElementById('notifyWarning'),
   notifyCritical: document.getElementById('notifyCritical'),
@@ -76,9 +85,53 @@ function showSaveStatus(message, isSuccess) {
 }
 
 /**
+ * Switch the account section between first-time setup and "connected" (replace / remove).
+ */
+async function syncKeyState() {
+  const connected = await hasApiKey();
+  elements.connectedPill.hidden = !connected;
+  elements.connectIntro.hidden = connected;
+  elements.connectSteps.hidden = connected;
+  elements.removeKeyBtn.hidden = !connected;
+  elements.apiKeyLabel.textContent = connected ? 'Replace API key' : 'API key';
+  elements.apiKeyInput.placeholder = connected ? 'Paste a new key to replace the current one' : 'Paste your Ollama API key';
+  elements.saveKeyBtn.textContent = connected ? 'Replace' : 'Connect';
+}
+
+/**
  * Initialize options page
  */
 async function init() {
+  elements.version.textContent = chrome.runtime.getManifest().version;
+  await syncKeyState();
+
+  elements.saveKeyBtn.addEventListener('click', async () => {
+    elements.saveKeyBtn.disabled = true;
+    elements.saveKeyBtn.textContent = 'Checking...';
+    const result = await saveApiKey(elements.apiKeyInput.value);
+    elements.saveKeyBtn.disabled = false;
+
+    if (result.success) {
+      elements.apiKeyInput.value = ''; // the key is never shown again
+      showInlineStatus(elements.keyStatus, 'Connected. You can close this tab and open the extension from the toolbar.', true, 8000);
+    } else {
+      showInlineStatus(elements.keyStatus, result.error, false, 8000);
+    }
+    await syncKeyState();
+  });
+  elements.apiKeyInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') elements.saveKeyBtn.click();
+  });
+
+  elements.removeKeyBtn.addEventListener('click', async () => {
+    if (!confirm('Remove the API key from this browser? Tracking stops until you connect again. (The key itself stays valid at ollama.com until you revoke it there.)')) {
+      return;
+    }
+    const result = await removeApiKey();
+    showInlineStatus(elements.keyStatus, result.success ? 'Key removed.' : `Failed: ${result.error}`, result.success);
+    await syncKeyState();
+  });
+
   // Load and populate settings
   const settings = await loadSettings();
   populateForm(settings);

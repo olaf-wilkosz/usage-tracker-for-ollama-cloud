@@ -13,6 +13,26 @@
     </header>
 
     <main>
+      <section class="settings-section" id="connectSection">
+        <h2>Ollama account <span id="connectedPill" class="pill" hidden>Connected</span></h2>
+        <p class="setting-description" id="connectIntro">The extension reads your usage through Ollama's official API, which needs an API key. It takes a minute:</p>
+        <ol class="steps" id="connectSteps">
+          <li>Open <a href="https://ollama.com/settings/keys" target="_blank" rel="noopener">ollama.com/settings/keys</a> and create a key (name it e.g. &ldquo;Usage Tracker&rdquo;).</li>
+          <li>Copy the key and paste it below.</li>
+        </ol>
+        <label class="field-label" for="apiKeyInput" id="apiKeyLabel">API key</label>
+        <div class="key-row">
+          <input type="password" id="apiKeyInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your Ollama API key">
+          <button id="saveKeyBtn" class="btn btn-primary" type="button">Connect</button>
+        </div>
+        <p id="keyStatus" class="clear-status hidden" role="status"></p>
+        <p class="setting-description key-note">
+          Ollama keys can't be limited to read-only, so treat this one like a password. Here it is stored encrypted,
+          sent only to ollama.com, and never shown again. You can revoke it any time at ollama.com/settings/keys.
+        </p>
+        <button id="removeKeyBtn" class="btn btn-secondary" type="button" hidden>Remove key from this browser</button>
+      </section>
+
       <section class="settings-section">
         <h2>Refresh Interval</h2>
         <p class="setting-description">How often to fetch usage data from Ollama. Minimum 1 minute to avoid rate limiting.</p>
@@ -72,8 +92,8 @@
 
       <section class="settings-section">
         <h2>Diagnostics</h2>
-        <p class="setting-description">If the popup says it cannot read the Ollama page, copy a sanitised snapshot of the page (e-mail addresses masked, no cookies) to share when reporting the problem.</p>
-        <button id="diagnosticsBtn" class="btn btn-secondary">Copy page diagnostics</button>
+        <p class="setting-description">If the popup reports a problem with the Ollama API, copy the last responses it received (usage numbers and model names only - never your API key) to share when reporting it.</p>
+        <button id="diagnosticsBtn" class="btn btn-secondary">Copy diagnostics</button>
         <p id="diagnosticsStatus" class="clear-status hidden"></p>
       </section>
 
@@ -87,8 +107,9 @@
       <section class="settings-section info-section">
         <h2>About</h2>
         <p class="setting-description">
-          Usage Tracker for Ollama Cloud v1.1.0<br>
-          Privacy-first: No telemetry, no external servers, all data stays in your browser.
+          Usage Tracker for Ollama Cloud v<span id="version"></span><br>
+          Privacy-first: no telemetry, no analytics. Your API key and usage data stay in this browser; the only server contacted is ollama.com.<br>
+          Unofficial: not affiliated with or endorsed by Ollama.
         </p>
         <p class="setting-description">
           Source code: <a href="https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud" target="_blank" rel="noopener">GitHub</a>

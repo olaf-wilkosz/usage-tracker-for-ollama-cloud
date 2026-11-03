@@ -1,10 +1,10 @@
 {
   "name": "usage-tracker-for-ollama-cloud",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Chrome extension (Manifest V3) that shows Ollama Cloud usage. This file only exists to run the tests - the extension itself has no build step and no runtime dependencies.",
+  "description": "Browser extension (Manifest V3) that shows Ollama Cloud usage. This file only exists to run the tests - the extension itself has no build step and no runtime dependencies.",
   "scripts": {
     "test": "node --test test/*.test.js"
   },

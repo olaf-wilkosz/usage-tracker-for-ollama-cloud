@@ -120,21 +120,53 @@ async function writeClipboard(text) {
 }
 
 /**
- * Copy the sanitised page snapshot saved by the last refresh (see parse-usage.js
- * buildDiagnostics) to the clipboard, so an unrecognised layout can be shared and fixed.
+ * Copy the raw Ollama API responses saved by the last successful read to the clipboard, so
+ * an unexpected response can be shared and fixed. They contain usage numbers and model names
+ * only - never the API key.
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function copyDiagnostics() {
   try {
     const { ollamaDiagnostics } = await chrome.storage.local.get('ollamaDiagnostics');
-    if (!ollamaDiagnostics?.html) {
-      return { success: false, error: 'No snapshot yet - refresh first' };
+    if (!ollamaDiagnostics?.text) {
+      return { success: false, error: 'No data yet - connect your API key and refresh first' };
     }
-    await writeClipboard(ollamaDiagnostics.html);
+    await writeClipboard(ollamaDiagnostics.text);
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
+}
+
+function sendToWorker(message, fallbackError) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        resolve({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        resolve(response || { success: false, error: fallbackError });
+      }
+    });
+  });
+}
+
+/** Whether an API key is stored (the key itself is never readable from the pages). */
+export async function hasApiKey() {
+  const response = await sendToWorker({ type: 'GET_KEY_STATE' }, 'No response');
+  return Boolean(response.hasKey);
+}
+
+/**
+ * Hand a pasted API key to the background worker, which checks it with Ollama and stores it sealed.
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export function saveApiKey(key) {
+  return sendToWorker({ type: 'SAVE_API_KEY', key }, 'No response');
+}
+
+/** Forget the stored API key and the data read with it. */
+export function removeApiKey() {
+  return sendToWorker({ type: 'REMOVE_API_KEY' }, 'No response');
 }
 
 /**

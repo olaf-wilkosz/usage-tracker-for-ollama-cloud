@@ -1,9 +1,11 @@
 /**
- * Activity history helpers shared by the background worker (which records hourly buckets)
- * and the popup (which renders them as a heatmap). Everything is stored and computed locally.
+ * Activity history helpers shared by the background worker (which merges what the API
+ * reports) and the popup (which renders it as a heatmap). Everything is stored locally.
  *
- * Buckets are keyed by LOCAL date-hour, e.g. "2026-11-03T14" -> amount of activity seen
- * during that hour (requests, or percentage points when the page has no request counts).
+ * "hours": requests per LOCAL date-hour, e.g. "2026-11-03T14". The API only reports hourly
+ * detail for the last 24h, so this series grows as the extension keeps running.
+ * "days": requests per day for the last 30 days (days start at 00:00 UTC), available from
+ * the very first refresh.
  */
 
 export const ACTIVITY_RETENTION_DAYS = 35;
@@ -18,28 +20,6 @@ export function dayKey(date) {
 /** Local date-hour key, e.g. "2026-11-03T14" */
 export function hourKey(date) {
   return `${dayKey(date)}T${pad(date.getHours())}`;
-}
-
-function sumValues(buckets) {
-  return Object.values(buckets || {}).reduce((sum, v) => sum + (v || 0), 0);
-}
-
-/**
- * Pick which recorded series to show, best first: the request log (one entry per request
- * with its exact time, read from the "Recent requests" table), then request-count deltas
- * between readings, then percentage-point deltas.
- * @param {{log?: Object, requests?: Object, percent?: Object}|undefined} activity
- * @returns {{kind: 'requests'|'percent', buckets: Object}}
- */
-export function pickActivityBuckets(activity) {
-  const log = activity?.log || {};
-  if (sumValues(log) > 0) return { kind: 'requests', buckets: log };
-
-  const requests = activity?.requests || {};
-  const percent = activity?.percent || {};
-  return sumValues(requests) > 0 || sumValues(percent) === 0
-    ? { kind: 'requests', buckets: requests }
-    : { kind: 'percent', buckets: percent };
 }
 
 /** Heat level 0 (none) .. 4 (busiest) for a value relative to the busiest cell. */
@@ -76,15 +56,21 @@ export function buildWeekGrid(buckets, now = new Date()) {
 
 /**
  * Last 5 calendar weeks (Monday-first), one cell per day; the last row is the current week.
- * @param {Object} buckets
+ * A day shows the larger of the API's daily total and the sum of the hours recorded for it.
+ * @param {Object} hours - requests per local date-hour
  * @param {Date} [now]
+ * @param {Object} [days] - requests per day as reported by the API
  * @returns {{rows: Array<{start: Date, cells: Array<{date: Date, value: number, future: boolean}>}>, max: number, total: number}}
  */
-export function buildMonthGrid(buckets, now = new Date()) {
-  const dayTotals = {};
-  for (const [key, value] of Object.entries(buckets)) {
+export function buildMonthGrid(hours, now = new Date(), days = {}) {
+  const dayTotals = { ...days };
+  const fromHours = {};
+  for (const [key, value] of Object.entries(hours)) {
     const day = key.slice(0, 10);
-    dayTotals[day] = (dayTotals[day] || 0) + value;
+    fromHours[day] = (fromHours[day] || 0) + value;
+  }
+  for (const [day, value] of Object.entries(fromHours)) {
+    dayTotals[day] = Math.max(dayTotals[day] || 0, value);
   }
 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -106,4 +92,24 @@ export function buildMonthGrid(buckets, now = new Date()) {
     rows.push({ start, cells });
   }
   return { rows, max, total };
+}
+
+/**
+ * Merge a fresh API reading into the stored series (the API's numbers replace stored ones
+ * for the periods it covers) and drop entries older than the retention window.
+ * @param {{hours?: Object, days?: Object}|undefined} stored
+ * @param {{hours: Object, days: Object}} fresh
+ * @param {Date} [now]
+ * @returns {{hours: Object, days: Object}}
+ */
+export function mergeActivity(stored, fresh, now = new Date()) {
+  const cutoff = new Date(now.getTime() - ACTIVITY_RETENTION_DAYS * 86400000);
+  const cutoffHour = hourKey(cutoff);
+  const cutoffDay = dayKey(cutoff);
+  const prune = (series, cutoffKey) => Object.fromEntries(Object.entries(series).filter(([key]) => key >= cutoffKey));
+
+  return {
+    hours: prune({ ...stored?.hours, ...fresh.hours }, cutoffHour),
+    days: prune({ ...stored?.days, ...fresh.days }, cutoffDay)
+  };
 }

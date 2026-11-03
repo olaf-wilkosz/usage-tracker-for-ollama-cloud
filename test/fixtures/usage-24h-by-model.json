@@ -1,0 +1,338 @@
+{
+  "range": "24h",
+  "scope": "self",
+  "granularity": "hour",
+  "group_by": "model",
+  "from": "2026-11-02T14:00:00Z",
+  "until": "2026-11-03T14:39:55.802120403Z",
+  "totals": {
+    "request_count": 22,
+    "usage_usd": 0.25774,
+    "input_tokens": 1175507,
+    "cached_input_tokens": 412384,
+    "output_tokens": 16709,
+    "groups": [
+      {
+        "model": "nemotron-3-ultra",
+        "request_count": 13,
+        "usage_usd": 0.16774,
+        "input_tokens": 1175507,
+        "cached_input_tokens": 412384,
+        "output_tokens": 16709
+      },
+      {
+        "model": "web_search",
+        "request_count": 9,
+        "usage_usd": 0.09,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0
+      }
+    ]
+  },
+  "buckets": [
+    {
+      "from": "2026-11-02T14:00:00Z",
+      "until": "2026-11-02T15:00:00Z",
+      "request_count": 16,
+      "usage_usd": 0.16532,
+      "input_tokens": 552441,
+      "cached_input_tokens": 180032,
+      "output_tokens": 10011,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 8,
+          "usage_usd": 0.08532,
+          "input_tokens": 552441,
+          "cached_input_tokens": 180032,
+          "output_tokens": 10011
+        },
+        {
+          "model": "web_search",
+          "request_count": 8,
+          "usage_usd": 0.08,
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "output_tokens": 0
+        }
+      ]
+    },
+    {
+      "from": "2026-11-02T15:00:00Z",
+      "until": "2026-11-02T16:00:00Z",
+      "request_count": 1,
+      "usage_usd": 0.02012,
+      "input_tokens": 115304,
+      "cached_input_tokens": 0,
+      "output_tokens": 2862,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 1,
+          "usage_usd": 0.02012,
+          "input_tokens": 115304,
+          "cached_input_tokens": 0,
+          "output_tokens": 2862
+        }
+      ]
+    },
+    {
+      "from": "2026-11-02T16:00:00Z",
+      "until": "2026-11-02T17:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-02T17:00:00Z",
+      "until": "2026-11-02T18:00:00Z",
+      "request_count": 4,
+      "usage_usd": 0.05253,
+      "input_tokens": 371950,
+      "cached_input_tokens": 232352,
+      "output_tokens": 1774,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 3,
+          "usage_usd": 0.04253,
+          "input_tokens": 371950,
+          "cached_input_tokens": 232352,
+          "output_tokens": 1774
+        },
+        {
+          "model": "web_search",
+          "request_count": 1,
+          "usage_usd": 0.01,
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "output_tokens": 0
+        }
+      ]
+    },
+    {
+      "from": "2026-11-02T18:00:00Z",
+      "until": "2026-11-02T19:00:00Z",
+      "request_count": 1,
+      "usage_usd": 0.01977,
+      "input_tokens": 135812,
+      "cached_input_tokens": 0,
+      "output_tokens": 2062,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 1,
+          "usage_usd": 0.01977,
+          "input_tokens": 135812,
+          "cached_input_tokens": 0,
+          "output_tokens": 2062
+        }
+      ]
+    },
+    {
+      "from": "2026-11-02T19:00:00Z",
+      "until": "2026-11-02T20:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-02T20:00:00Z",
+      "until": "2026-11-02T21:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-02T21:00:00Z",
+      "until": "2026-11-02T22:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-02T22:00:00Z",
+      "until": "2026-11-02T23:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-02T23:00:00Z",
+      "until": "2026-11-03T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T00:00:00Z",
+      "until": "2026-11-03T01:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T01:00:00Z",
+      "until": "2026-11-03T02:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T02:00:00Z",
+      "until": "2026-11-03T03:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T03:00:00Z",
+      "until": "2026-11-03T04:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T04:00:00Z",
+      "until": "2026-11-03T05:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T05:00:00Z",
+      "until": "2026-11-03T06:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T06:00:00Z",
+      "until": "2026-11-03T07:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T07:00:00Z",
+      "until": "2026-11-03T08:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T08:00:00Z",
+      "until": "2026-11-03T09:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T09:00:00Z",
+      "until": "2026-11-03T10:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T10:00:00Z",
+      "until": "2026-11-03T11:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T11:00:00Z",
+      "until": "2026-11-03T12:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T12:00:00Z",
+      "until": "2026-11-03T13:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T13:00:00Z",
+      "until": "2026-11-03T14:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    },
+    {
+      "from": "2026-11-03T14:00:00Z",
+      "until": "2026-11-03T14:39:55.802120403Z",
+      "partial": true,
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": []
+    }
+  ]
+}

@@ -1,32 +1,37 @@
 /**
  * Background service worker for Usage Tracker for Ollama Cloud.
- * Handles periodic fetching, parsing via offscreen document, storage, toolbar icon updates,
- * activity history and notifications.
+ * Periodically reads the user's usage from the official Ollama API (ollama-api.js) with the
+ * API key they provided, stores it, draws the toolbar icon, keeps the activity history and
+ * sends notifications.
  */
 
-import { getBadgeColor, emptyUsage, pickModelsSource } from './parse-usage.js';
+import { getBadgeColor, getBadgeStyle, emptyUsage } from './usage.js';
+import { apiGet, fetchApiData, buildUsage, extractActivity, statusForError } from './ollama-api.js';
+import { sealSecret, openSecret, destroySealingKey } from './secret-store.js';
 import { DEFAULT_SETTINGS, migrateSettings } from './settings.js';
-import { hourKey, ACTIVITY_RETENTION_DAYS } from './activity.js';
+import { mergeActivity } from './activity.js';
 
 const STORAGE_KEY = 'ollamaUsageData';
-const DIAGNOSTICS_KEY = 'ollamaDiagnostics'; // sanitised page snapshot for "Copy diagnostics"
-const ACTIVITY_KEY = 'ollamaActivity'; // hourly activity buckets for the popup heatmap
+const DIAGNOSTICS_KEY = 'ollamaDiagnostics'; // last raw API responses, for "Copy diagnostics"
+const ACTIVITY_KEY = 'ollamaActivity'; // hourly + daily request counts for the popup heatmap
 const NOTIFIED_KEY = 'ollamaNotified'; // per-meter notification state (no repeat alerts)
 const ERROR_COUNT_KEY = 'ollamaErrorCount'; // persisted: the service worker is restarted between alarms
-const COLORS_KEY = 'ollamaModelColors'; // model -> color, as ollama.com paints it
-const MAX_LEARNED_COLORS = 200;
+const API_KEY_KEY = 'ollamaApiKey'; // the API key, sealed (see secret-store.js)
 const ALARM_NAME = 'ollamaUsageRefresh';
-const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
-const OLLAMA_SETTINGS_URL = 'https://ollama.com/settings';
 const DEFAULT_ICON_PATHS = { 16: 'icons/icon16.png', 32: 'icons/icon32.png', 48: 'icons/icon48.png', 128: 'icons/icon128.png' };
 const DEFAULT_TITLE = 'Usage Tracker for Ollama Cloud';
 
 const MAX_CONSECUTIVE_ERRORS = 3;
 const MAX_ICON_RINGS = 3;
 const ICON_BACKGROUND = '#1a1b1e';
+const SETUP_BADGE_COLOR = '#f57c00';
+const SETUP_BADGE_TEXT = '#1a1a1a'; // white on orange is below 4.5:1
 const LEVEL_RANK = { warning: 1, critical: 2 };
+// Failures that should not blank the popup: keep showing the last good numbers, flagged stale
+const TRANSIENT_STATUSES = new Set(['network_error', 'rate_limited', 'api_error']);
+// Statuses where the user has to (re)connect an API key
+const NEEDS_KEY_STATUSES = new Set(['no_key', 'auth_required']);
 
-let offscreenDocumentCreated = false;
 let refreshInFlight = null;
 
 /**
@@ -44,115 +49,27 @@ async function saveSettings(settings) {
   await chrome.storage.local.set({ settings: migrateSettings(settings) });
 }
 
-/**
- * Create offscreen document if not already created
- */
-async function ensureOffscreenDocument() {
-  if (offscreenDocumentCreated) return true;
-
-  try {
-    // Check if offscreen document already exists
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT'],
-      documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)]
-    });
-
-    if (existingContexts.length > 0) {
-      offscreenDocumentCreated = true;
-      return true;
-    }
-
-    // Create offscreen document
-    await chrome.offscreen.createDocument({
-      url: OFFSCREEN_DOCUMENT_PATH,
-      reasons: ['DOM_PARSER'],
-      justification: 'Parse Ollama settings page HTML to extract usage data'
-    });
-
-    offscreenDocumentCreated = true;
-    // Give it a moment to load
-    await new Promise(resolve => setTimeout(resolve, 100));
-    return true;
-  } catch (error) {
-    console.error('[background] Failed to create offscreen document:', error);
-    return false;
-  }
+async function loadApiKey() {
+  const stored = await chrome.storage.local.get(API_KEY_KEY);
+  return openSecret(stored[API_KEY_KEY]);
 }
 
 /**
- * Parse HTML using offscreen document
+ * Read everything from the Ollama API and turn it into usage data.
+ * @returns {Promise<{data: Object, raw?: Object}>} raw API responses when they were received
  */
-async function parseHtmlOffscreen(html) {
-  const created = await ensureOffscreenDocument();
-  if (!created) {
-    throw new Error('Failed to create offscreen document');
-  }
+async function collectUsage() {
+  const key = await loadApiKey();
+  if (!key) return { data: emptyUsage('no_key') };
 
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(
-      { type: 'PARSE_USAGE_HTML', html },
-      response => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else if (response?.success) {
-          resolve(response.data);
-        } else {
-          reject(new Error(response?.error || 'Unknown parse error'));
-        }
-      }
-    );
-  });
-}
-
-/**
- * Fetch Ollama settings page and parse usage data
- */
-async function fetchAndParseUsage() {
+  let raw;
   try {
-    // redirect: 'manual' is required to detect auth_required reliably. An unauthenticated
-    // /settings request gets a 303 redirect to the sign-in page, which itself lives on a
-    // different origin (signin.ollama.com / formerly api.workos.com) - a plain fetch() would
-    // either silently follow that cross-origin hop (landing on a login page with no usage
-    // data, misreported as parse_error) or throw a CORS error (misreported as network_error),
-    // since the extension's host_permissions only cover ollama.com. With 'manual' we stop at
-    // the first hop and inspect it directly instead of following it cross-origin. Verified
-    // against the real endpoint (logged out): Node's fetch surfaces this as
-    // {status: 303, type: 'basic'} - since host_permissions grant unfiltered ("basic") access
-    // to ollama.com the extension likely sees the real 3xx status the same way, but a
-    // CORS-filtered 'opaqueredirect' (status 0) is checked too in case that assumption
-    // doesn't hold in the extension context.
-    const response = await fetch(OLLAMA_SETTINGS_URL, {
-      credentials: 'include',
-      redirect: 'manual',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
-    });
-
-    const isRedirect = response.type === 'opaqueredirect' || response.status === 0 ||
-      (response.status >= 300 && response.status < 400);
-
-    if (isRedirect || response.status === 401 || response.status === 403) {
-      return { ...emptyUsage('auth_required'), lastFetch: new Date().toISOString() };
-    }
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const html = await response.text();
-    const parsed = await parseHtmlOffscreen(html);
-
-    return {
-      ...parsed,
-      lastFetch: new Date().toISOString()
-    };
+    raw = await fetchApiData(key);
+    return { data: { ...buildUsage(raw), lastFetch: new Date().toISOString() }, raw };
   } catch (error) {
-    console.error('[background] Fetch/parse error:', error);
-    return {
-      ...emptyUsage(error.message.includes('offscreen') ? 'parse_error' : 'network_error'),
-      lastFetch: new Date().toISOString()
-    };
+    // Details stay out of the log: errors here carry no key, but keep the console quiet anyway
+    console.warn('[background] Refresh failed:', error?.kind || 'unknown', error?.message);
+    return { data: { ...emptyUsage(statusForError(error)), lastFetch: new Date().toISOString() }, raw };
   }
 }
 
@@ -226,6 +143,18 @@ function drawUsageIcon(size, meters) {
  * Update the toolbar icon and tooltip based on usage data
  */
 async function updateBadge(data) {
+  if (NEEDS_KEY_STATUSES.has(data.status)) {
+    // Nudge towards setup: "!" badge and a tooltip that says what to do
+    await chrome.action.setIcon({ path: DEFAULT_ICON_PATHS });
+    await chrome.action.setBadgeBackgroundColor({ color: SETUP_BADGE_COLOR });
+    await chrome.action.setBadgeTextColor({ color: SETUP_BADGE_TEXT });
+    await chrome.action.setBadgeText({ text: '!' });
+    await chrome.action.setTitle({
+      title: `${DEFAULT_TITLE}\n${data.status === 'no_key' ? 'Click to connect your Ollama account' : 'Ollama rejected the API key - click to fix'}`
+    });
+    return;
+  }
+
   const withPercent = (data.meters || []).filter((m) => m.usedPercent !== null && m.usedPercent !== undefined);
   const creditsLine = data.credits ? `Credits: ${data.credits.text}` : null;
 
@@ -248,8 +177,9 @@ async function updateBadge(data) {
   // several windows are already visible as rings, so the badge stays empty.
   if (withPercent.length === 1) {
     const percent = withPercent[0].usedPercent;
-    await chrome.action.setBadgeBackgroundColor({ color: getBadgeColor(percent) });
-    await chrome.action.setBadgeTextColor({ color: '#ffffff' });
+    const style = getBadgeStyle(percent);
+    await chrome.action.setBadgeBackgroundColor({ color: style.color });
+    await chrome.action.setBadgeTextColor({ color: style.textColor });
     await chrome.action.setBadgeText({ text: String(Math.round(percent)) });
   } else {
     await chrome.action.setBadgeText({ text: '' });
@@ -277,9 +207,7 @@ async function checkThresholdNotifications(data, settings) {
         : null;
       if (!level) continue;
 
-      // An approximate reset time (parsed from "in 1 day" text) shifts on every fetch, so
-      // it can't identify a cycle - fall back to escalation-only de-duplication there.
-      const cycle = meter.resetsAtApprox ? '' : (meter.resetsAt || '');
+      const cycle = meter.resetsAt || '';
       const previous = stored[meter.id];
       const alreadyNotified = previous && previous.cycle === cycle && LEVEL_RANK[previous.level] >= LEVEL_RANK[level];
 
@@ -322,6 +250,14 @@ async function sendTestNotification() {
   return { success: true, level };
 }
 
+// What to tell the user once a failure has persisted; statuses missing here stay silent
+const PERSISTENT_ERROR_MESSAGES = {
+  auth_required: 'Ollama rejected your API key. Open the extension settings and paste a new one.',
+  forbidden: 'Ollama says your account is suspended or access is denied.',
+  api_error: 'The Ollama API returned something unexpected. Open the extension settings and use "Copy diagnostics" to report it.',
+  network_error: 'Could not reach the Ollama API. Check your connection.'
+};
+
 /**
  * Check for persistent errors and notify user
  */
@@ -329,24 +265,13 @@ async function checkPersistentErrors(data, settings) {
   const stored = await chrome.storage.local.get(ERROR_COUNT_KEY);
   let errors = stored[ERROR_COUNT_KEY] || 0;
 
-  if (data.status !== 'ok') {
+  if (data.status === 'no_key') {
+    // Not set up yet is not an error
+    errors = 0;
+  } else if (data.status !== 'ok') {
     errors++;
-    if (errors === MAX_CONSECUTIVE_ERRORS && settings.notifyEnabled) {
-      let message = '';
-      switch (data.status) {
-        case 'auth_required':
-          message = 'Not logged into Ollama Cloud. Please log in at ollama.com/settings';
-          break;
-        case 'parse_error':
-          message = 'Failed to parse Ollama settings page. The page structure may have changed. Open the extension settings and use "Copy page diagnostics" to report it.';
-          break;
-        case 'network_error':
-          message = 'Network error fetching Ollama settings. Check your connection.';
-          break;
-        default:
-          message = `Usage tracking stopped working (${data.status}).`;
-      }
-
+    const message = PERSISTENT_ERROR_MESSAGES[data.status];
+    if (errors === MAX_CONSECUTIVE_ERRORS && settings.notifyEnabled && message) {
       await chrome.notifications.create('ollama-usage-persistent-error', {
         type: 'basic',
         iconUrl: 'icons/icon48.png',
@@ -365,119 +290,8 @@ async function checkPersistentErrors(data, settings) {
 }
 
 /**
- * Activity counter for this reading: total requests of the model breakdown when the page
- * has one (exact), else the main usage window's percentage.
- */
-function activityScore(data) {
-  const { meter, models } = pickModelsSource(data);
-  const requests = models.reduce((sum, m) => sum + m.requests, 0);
-  if (requests > 0) return { kind: 'requests', key: meter?.id ?? 'page', value: requests };
-
-  const primary = (data.meters || []).find((m) => m.usedPercent !== null && m.usedPercent !== undefined);
-  return primary ? { kind: 'percent', key: primary.id, value: primary.usedPercent } : null;
-}
-
-const MAX_SEEN_REQUESTS = 300;
-
-/** Drop hourly buckets older than the retention window (in place). */
-function pruneBuckets(buckets) {
-  const cutoff = hourKey(new Date(Date.now() - ACTIVITY_RETENTION_DAYS * 86400000));
-  for (const key of Object.keys(buckets)) {
-    if (key < cutoff) delete buckets[key];
-  }
-}
-
-/**
- * Count each request from the "Recent requests" table once, in the hour it actually
- * happened. Requests are identified by their timestamp, so repeated readings of the same
- * table never double count, and the first reading back-fills the visible history.
- * @returns {boolean} true when the page had a request table (so the delta fallback is skipped)
- */
-function recordRequestLog(activity, requests) {
-  if (!Array.isArray(requests) || requests.length === 0) return false;
-
-  const seen = new Set(activity.seen || []);
-  const log = { ...activity.log };
-  for (const request of requests) {
-    if (seen.has(request.id)) continue;
-    const key = hourKey(new Date(request.at));
-    log[key] = (log[key] || 0) + 1;
-  }
-
-  // Newest first, then older ids still remembered; capped so storage stays small
-  activity.seen = [...new Set([...requests.map((r) => r.id), ...(activity.seen || [])])].slice(0, MAX_SEEN_REQUESTS);
-  activity.log = log;
-  return true;
-}
-
-/**
- * Record activity for the popup heatmap. Preferred source: the request log (exact times).
- * Fallback for pages without one: the increase since the previous reading is added to the
- * current hour's bucket. Everything stays local.
- */
-async function recordActivity(data) {
-  const stored = (await chrome.storage.local.get(ACTIVITY_KEY))[ACTIVITY_KEY] || {};
-  const activity = { requests: {}, percent: {}, log: {}, seen: [], ...stored };
-
-  const usedLog = recordRequestLog(activity, data.recentRequests);
-  if (usedLog) {
-    pruneBuckets(activity.log);
-    await chrome.storage.local.set({ [ACTIVITY_KEY]: activity });
-    return;
-  }
-
-  const score = activityScore(data);
-  if (!score) return;
-  const last = activity.last;
-
-  // First reading (or a different window/kind) only sets the baseline - we can't know when
-  // the existing usage happened.
-  let delta = 0;
-  if (last && last.kind === score.kind && last.key === score.key) {
-    // A smaller value means the window reset; what's counted now accrued since the reset
-    delta = score.value >= last.value ? score.value - last.value : score.value;
-  }
-
-  const buckets = { ...activity[score.kind] };
-  if (delta > 0) {
-    const key = hourKey(new Date());
-    buckets[key] = Math.round(((buckets[key] || 0) + delta) * 100) / 100;
-  }
-
-  pruneBuckets(buckets);
-  activity[score.kind] = buckets;
-  activity.last = score;
-  await chrome.storage.local.set({ [ACTIVITY_KEY]: activity });
-}
-
-/**
- * Remember the colors ollama.com paints each model with (read from the usage bars), so a
- * model keeps its real color wherever it shows up later. Newest colors win; the map is
- * capped. Returns the updated map, or null when nothing changed.
- */
-async function mergeLearnedColors(data) {
-  const seen = {};
-  for (const m of [...(data.meters || []).flatMap((meter) => meter.models || []), ...(data.models || [])]) {
-    if (m.model && m.color) seen[m.model] = m.color;
-  }
-  if (Object.keys(seen).length === 0) return null;
-
-  const stored = (await chrome.storage.local.get(COLORS_KEY))[COLORS_KEY] || {};
-  if (Object.entries(seen).every(([model, color]) => stored[model] === color)) return null;
-
-  // Re-inserting refreshed models last keeps recently seen ones when the cap trims the oldest
-  const merged = { ...stored };
-  for (const [model, color] of Object.entries(seen)) {
-    delete merged[model];
-    merged[model] = color;
-  }
-  const entries = Object.entries(merged);
-  return Object.fromEntries(entries.slice(Math.max(0, entries.length - MAX_LEARNED_COLORS)));
-}
-
-/**
  * Main refresh function - called by alarm. Concurrent calls (alarm + manual refresh) share
- * one run so activity deltas aren't double counted.
+ * one run so the API is only asked once.
  */
 function refreshUsage() {
   if (!refreshInFlight) {
@@ -489,25 +303,65 @@ function refreshUsage() {
 async function doRefresh() {
   console.log('[background] Refreshing usage data...');
 
-  const { diagnostics, ...data } = await fetchAndParseUsage();
+  const collected = await collectUsage();
+  let { data } = collected;
+  const { raw } = collected;
+
+  const previous = (await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY];
+  if (TRANSIENT_STATUSES.has(data.status) && previous?.meters) {
+    // A hiccup (offline, rate limit, odd response): keep the last good numbers on screen
+    data = { ...previous, status: data.status, stale: true };
+  }
 
   const toStore = { [STORAGE_KEY]: data };
-  if (diagnostics) toStore[DIAGNOSTICS_KEY] = { html: diagnostics, at: data.lastFetch };
-  // Same write as the usage data so the popup sees colors and models in one storage event
-  const colors = await mergeLearnedColors(data);
-  if (colors) toStore[COLORS_KEY] = colors;
+  if (raw) toStore[DIAGNOSTICS_KEY] = { text: JSON.stringify({ at: data.lastFetch, status: data.status, ...raw }), at: data.lastFetch };
   await chrome.storage.local.set(toStore);
 
   await updateBadge(data);
 
   const settings = await getSettings();
   if (data.status === 'ok') {
-    await recordActivity(data);
+    const stored = (await chrome.storage.local.get(ACTIVITY_KEY))[ACTIVITY_KEY];
+    await chrome.storage.local.set({ [ACTIVITY_KEY]: mergeActivity(stored, extractActivity(raw)) });
     await checkThresholdNotifications(data, settings);
   }
   await checkPersistentErrors(data, settings);
 
   console.log('[background] Refresh complete:', data.status);
+}
+
+/**
+ * Validate a pasted API key against Ollama, then keep it sealed. The key never leaves this
+ * worker: it is not echoed back, logged or stored in the clear.
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function saveApiKey(rawKey) {
+  const key = String(rawKey ?? '').trim();
+  if (!/^[\x21-\x7e]{8,512}$/.test(key)) {
+    return { success: false, error: 'That does not look like an API key - paste the whole key without spaces.' };
+  }
+
+  try {
+    await apiGet('/balance', key);
+  } catch (error) {
+    return {
+      success: false,
+      error: error.kind === 'auth' ? 'Ollama rejected this key. Check that you copied all of it.' : `Could not check the key: ${error.message}`
+    };
+  }
+
+  await chrome.storage.local.set({ [API_KEY_KEY]: await sealSecret(key), [ERROR_COUNT_KEY]: 0 });
+  await refreshUsage();
+  return { success: true };
+}
+
+/** Forget the key and everything derived from it; the popup goes back to the setup prompt. */
+async function removeApiKey() {
+  await chrome.storage.local.remove([API_KEY_KEY, STORAGE_KEY, DIAGNOSTICS_KEY, NOTIFIED_KEY, ERROR_COUNT_KEY]);
+  await destroySealingKey();
+  const data = { ...emptyUsage('no_key'), lastFetch: new Date().toISOString() };
+  await chrome.storage.local.set({ [STORAGE_KEY]: data });
+  await updateBadge(data);
 }
 
 /**
@@ -537,6 +391,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
  * Handle messages from popup/options
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Only the extension's own pages may talk to the worker
+  if (sender?.id && sender.id !== chrome.runtime.id) return false;
+
   if (message.type === 'GET_USAGE_DATA') {
     chrome.storage.local.get(STORAGE_KEY).then(result => {
       sendResponse({ data: result[STORAGE_KEY] || null });
@@ -570,6 +427,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'GET_KEY_STATE') {
+    chrome.storage.local.get(API_KEY_KEY).then((stored) => {
+      sendResponse({ hasKey: Boolean(stored[API_KEY_KEY]) });
+    });
+    return true;
+  }
+
+  if (message.type === 'SAVE_API_KEY') {
+    saveApiKey(message.key).then(sendResponse).catch(() => {
+      sendResponse({ success: false, error: 'Could not store the key' });
+    });
+    return true;
+  }
+
+  if (message.type === 'REMOVE_API_KEY') {
+    removeApiKey().then(() => sendResponse({ success: true })).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
   if (message.type === 'TEST_NOTIFICATION') {
     sendTestNotification().then(sendResponse).catch(error => {
       sendResponse({ success: false, error: error.message });
@@ -579,6 +457,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CLEAR_DATA') {
     chrome.storage.local.clear().then(async () => {
+      await destroySealingKey();
       await chrome.action.setBadgeText({ text: '' });
       await chrome.action.setIcon({ path: DEFAULT_ICON_PATHS });
       await chrome.action.setTitle({ title: DEFAULT_TITLE });
@@ -603,8 +482,14 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Initialize alarm
   await initializeAlarm();
 
-  // Do initial fetch
+  // Do initial fetch (shows the "!" setup badge until an API key is saved)
   await refreshUsage();
+
+  // First run: open the setup page, where the API key is created and pasted. The popup
+  // would close the moment the user switches to ollama.com to create the key.
+  if (details.reason === 'install') {
+    chrome.runtime.openOptionsPage();
+  }
 });
 
 /**

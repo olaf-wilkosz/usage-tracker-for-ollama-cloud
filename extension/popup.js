@@ -1,40 +1,38 @@
 /**
  * Popup logic for Usage Tracker for Ollama Cloud.
- * Reads usage data from storage and renders every usage window the page reports (a "Free
- * usage" window, legacy session + weekly windows, ...) plus the credits balance, a model
- * breakdown donut, an activity heatmap and the peak / off-peak pricing banner. An in-popup
+ * Reads usage data from storage and renders every usage window the Ollama API reports
+ * (included credits, or legacy session + weekly windows) plus the purchased credits, a model
+ * breakdown donut, recent activity, an activity heatmap and the peak / off-peak pricing
+ * banner. Until an API key is connected it shows a setup prompt instead. An in-popup
  * settings panel is toggled by the gear icon.
  */
 
-import {
-  formatResetTime,
-  getBadgeColor,
-  normalizeUsageData,
-  pickModelsSource,
-  secondsUntil
-} from './parse-usage.js';
+import { formatResetTime, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, DEFAULT_SETTINGS
 } from './settings.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
-import { pickActivityBuckets, buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
+import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const OLLAMA_SETTINGS_URL = 'https://ollama.com/settings';
+const OLLAMA_BILLING_URL = 'https://ollama.com/settings';
 const COUNTDOWN_REFRESH_MS = 30000;
 const RESET_PROGRESSIVE = { Resets: 'Resetting', Refills: 'Refilling', Renews: 'Renewing' };
 
 // DOM elements
 const elements = {
   headerTitle: document.getElementById('headerTitle'),
-  tierBadge: document.getElementById('tierBadge'),
   gearIcon: document.getElementById('gearIcon'),
   closeIcon: document.getElementById('closeIcon'),
   recentBlock: document.getElementById('recentBlock'),
   recentList: document.getElementById('recentList'),
   recentSummary: document.getElementById('recentSummary'),
   statusContainer: document.getElementById('statusContainer'),
+  connectBlock: document.getElementById('connectBlock'),
+  connectText: document.getElementById('connectText'),
+  connectBtn: document.getElementById('connectBtn'),
+  manageKeyBtn: document.getElementById('manageKeyBtn'),
   peakBanner: document.getElementById('peakBanner'),
   peakTitle: document.getElementById('peakTitle'),
   peakDetail: document.getElementById('peakDetail'),
@@ -53,6 +51,7 @@ const elements = {
   lastUpdated: document.getElementById('lastUpdated'),
   refreshBtn: document.getElementById('refreshBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
+  activityBlock: document.getElementById('activityBlock'),
   mainView: document.getElementById('mainView'),
   settingsView: document.getElementById('settingsView'),
   refreshInterval: document.getElementById('refreshInterval'),
@@ -73,13 +72,7 @@ let currentSettings = { ...DEFAULT_SETTINGS };
 let activityData = null;
 let activityMode = 'week';
 let settingsOpen = false;
-let planLabel = null;
-let learnedColors = {}; // model -> color as ollama.com paints it (see background.js)
-
-/** The model's own ollama.com color when it has been seen, else the built-in fallback. */
-function colorFor(model) {
-  return modelColor(model, learnedColors);
-}
+let setupNeeded = false; // no API key yet (or it was rejected): the setup prompt replaces the usage view
 
 /** Create an element with an optional class and text. */
 function el(tag, className, text) {
@@ -106,14 +99,13 @@ function updatePercentText(element, percent, fallbackText = '--') {
     return;
   }
   element.textContent = `${percent.toFixed(1)}% used`;
-  element.style.color = getBadgeColor(percent);
+  element.style.color = getTextColor(percent);
 }
 
 /**
- * Render a segmented usage bar: one colored segment per model, matching the real bar on
- * ollama.com/settings. Segments fill only up to `usedPercent` of the track (not the full
- * width) so bars stay comparable at a glance. Without a model breakdown the bar is a single
- * segment in the usage threshold color.
+ * Render a usage bar: a single segment in the usage threshold color, filled up to
+ * `usedPercent` of the track. (Segments per model are supported when a meter carries a
+ * model breakdown.)
  */
 function renderSegmentBar(barEl, models, usedPercent) {
   barEl.textContent = '';
@@ -133,7 +125,7 @@ function renderSegmentBar(barEl, models, usedPercent) {
   for (const { model, requests, color } of list) {
     const segment = el('div', 'segment');
     segment.style.width = `${(requests / total) * percent}%`;
-    segment.style.background = color || colorFor(model);
+    segment.style.background = color || modelColor(model);
     segment.title = `${model}: ${requests} request${requests === 1 ? '' : 's'}`;
     barEl.appendChild(segment);
   }
@@ -146,20 +138,16 @@ function renderSegmentBar(barEl, models, usedPercent) {
 function setResetText(node) {
   const verb = node.dataset.verb || 'Resets';
   const resetsAt = node.dataset.resetsAt;
+  const detail = node.dataset.prefix || '';
 
-  if (resetsAt) {
-    const seconds = secondsUntil(resetsAt);
-    if (seconds === null) {
-      node.textContent = '';
-    } else if (seconds <= 0) {
-      node.textContent = `${RESET_PROGRESSIVE[verb] || 'Resetting'} now...`;
-    } else {
-      const approx = node.dataset.approx === '1' ? '~' : '';
-      node.textContent = `${verb} in ${approx}${formatResetTime(seconds)}.`;
-    }
-  } else {
-    node.textContent = node.dataset.fallback || '';
+  let text = '';
+  const seconds = resetsAt ? secondsUntil(resetsAt) : null;
+  if (seconds !== null && seconds <= 0) {
+    text = `${RESET_PROGRESSIVE[verb] || 'Resetting'} now...`;
+  } else if (seconds !== null) {
+    text = `${verb} in ${formatResetTime(seconds)}.`;
   }
+  node.textContent = [detail, text].filter(Boolean).join(' · ');
   node.hidden = node.textContent === '';
 }
 
@@ -190,8 +178,7 @@ function buildMeterBlock(meter) {
   reset.dataset.resetLine = '1';
   reset.dataset.verb = meter.resetVerb || 'Resets';
   if (meter.resetsAt) reset.dataset.resetsAt = meter.resetsAt;
-  if (meter.resetsAtApprox) reset.dataset.approx = '1';
-  if (meter.refillText) reset.dataset.fallback = meter.refillText;
+  if (meter.detail) reset.dataset.prefix = meter.detail;
   setResetText(reset);
 
   block.append(row, bar, reset);
@@ -204,7 +191,7 @@ function renderMeters(meters, status) {
     elements.metersContainer.appendChild(buildMeterBlock(meter));
   }
   if (meters.length === 0 && status === 'ok') {
-    elements.metersContainer.appendChild(el('div', 'empty-note', 'No usage windows on your Ollama page right now.'));
+    elements.metersContainer.appendChild(el('div', 'empty-note', 'Your plan has no included usage to track.'));
   }
 }
 
@@ -219,7 +206,7 @@ function renderCredits(credits) {
   elements.creditsNote.textContent = '';
   if (credits.amount <= 0) {
     const link = el('a', 'credits-link', 'Add credits');
-    link.href = OLLAMA_SETTINGS_URL;
+    link.href = OLLAMA_BILLING_URL;
     link.target = '_blank';
     link.rel = 'noopener';
     elements.creditsNote.append('No credits yet. ', link);
@@ -236,20 +223,16 @@ const DONUT_MIN_PX = 96;
 const DONUT_MAX_PX = 128;
 const DONUT_PX_PER_ROW = 28;
 const RECENT_SHOWN = 5;
-// ollama.com's "Recent requests" table loads this many rows at a time; a full page that is
-// entirely within the last 24h means the real count is higher ("25+")
-const RECENT_PAGE_SIZE = 25;
-const DAY_MS = 86400000;
 
 /**
  * Legend/donut entries from the model breakdown, busiest first. With more than
  * MAX_LEGEND_ROWS models the tail is folded into one "N other models" entry, so the legend
  * (and the popup) stays a bounded height however many models were used.
- * @param {Array<{model: string, requests: number}>} models - sorted by requests, descending
- * @returns {Array<{label: string, requests: number, color: string, members: string|null}>}
+ * @param {Array<{model: string, requests: number, cost?: number}>} models - sorted by requests, descending
+ * @returns {Array<{label: string, requests: number, cost: number, color: string, members: string|null}>}
  */
 function buildLegendItems(models) {
-  const items = models.map(({ model, requests, color }) => ({ label: model, requests, color: color || colorFor(model), members: null }));
+  const items = models.map(({ model, requests, cost }) => ({ label: model, requests, cost: cost || 0, color: modelColor(model), members: null }));
   if (items.length <= MAX_LEGEND_ROWS) return items;
 
   const head = items.slice(0, MAX_LEGEND_ROWS - 1);
@@ -257,6 +240,7 @@ function buildLegendItems(models) {
   return [...head, {
     label: `${rest.length} other models`,
     requests: rest.reduce((sum, m) => sum + m.requests, 0),
+    cost: rest.reduce((sum, m) => sum + m.cost, 0),
     color: OTHERS_COLOR,
     members: rest.map((m) => `${m.label}: ${m.requests}`).join('\n')
   }];
@@ -305,12 +289,12 @@ function renderDonut(container, models, total) {
 /** Legend next to the donut: swatch + model name, and below it "34 requests · 64%". */
 function renderModelList(listEl, models, total) {
   listEl.textContent = '';
-  for (const { label: name, requests, color, members } of models) {
+  for (const { label: name, requests, cost, color, members } of models) {
     const share = Math.round((requests / total) * 100);
     const detail = `${requests} request${requests === 1 ? '' : 's'} · ${share}%`;
 
     const li = el('li');
-    li.title = `${name}: ${detail}${members ? `\n${members}` : ''}`;
+    li.title = `${name}: ${detail}${cost > 0 ? ` · ${formatUsd(cost)}` : ''}${members ? `\n${members}` : ''}`;
     const swatch = el('span', 'model-swatch');
     swatch.style.background = color;
     const text = el('div', 'model-text');
@@ -321,47 +305,48 @@ function renderModelList(listEl, models, total) {
 }
 
 /**
- * The latest requests from ollama.com's "Recent requests" table: model, cost, how long ago.
- * The block is collapsed by default (it's a glance-and-go popup; the full list lives on
- * ollama.com) but its summary already says how many requests happened in the last 24h.
+ * The busiest recent hours (newest first): when, requests, top model and cost. The block is
+ * collapsed by default (it's a glance-and-go popup) but its summary already says how many
+ * requests happened in the last 24h.
  */
-function renderRecent(requests) {
-  const all = requests || [];
+function renderRecent(hours) {
+  const all = hours || [];
   const latest = all.slice(0, RECENT_SHOWN);
   elements.recentList.textContent = '';
   elements.recentBlock.hidden = latest.length === 0;
 
-  const lastDay = all.filter((r) => Date.now() - Date.parse(r.at) < DAY_MS).length;
-  const truncated = lastDay === all.length && all.length >= RECENT_PAGE_SIZE;
-  elements.recentSummary.textContent = `${lastDay}${truncated ? '+' : ''} in last 24h`;
+  const requests = all.reduce((sum, h) => sum + h.requests, 0);
+  const cost = all.reduce((sum, h) => sum + h.cost, 0);
+  elements.recentSummary.textContent = `${requests} request${requests === 1 ? '' : 's'} · ${formatUsd(cost)} in 24h`;
 
-  for (const request of latest) {
+  for (const hour of latest) {
+    const start = new Date(hour.from);
+    const top = [...hour.models].sort((a, b) => b.requests - a.requests)[0];
+
     const li = el('li');
-    li.title = new Date(request.at).toLocaleString();
+    li.title = hour.models.map((m) => `${m.model}: ${m.requests}`).join('\n');
 
     const swatch = el('span', 'model-swatch');
-    swatch.style.background = colorFor(request.model);
+    swatch.style.background = modelColor(top?.model ?? '');
     const text = el('div', 'model-text');
-    const when = el('div', 'model-requests');
-    when.dataset.at = request.at;
-    setAgoText(when);
-    text.append(el('div', 'model-name', request.model), when);
+    const when = `${start.toLocaleDateString(undefined, { weekday: 'short' })} ${String(start.getHours()).padStart(2, '0')}:00`;
+    const detail = `${hour.requests} request${hour.requests === 1 ? '' : 's'}${hour.models.length > 1 ? ` · ${hour.models.length} models` : ''}`;
+    text.append(el('div', 'model-name', when), el('div', 'model-requests', detail));
 
-    li.append(swatch, text, el('span', 'recent-cost', request.costText || ''));
+    li.append(swatch, text, el('span', 'recent-cost', formatUsd(hour.cost)));
     elements.recentList.appendChild(li);
   }
 }
 
 function renderModels(data) {
-  const { meter, label, models } = pickModelsSource(data);
-  const sorted = [...models].sort((a, b) => b.requests - a.requests);
+  const sorted = [...(data.models || [])].sort((a, b) => b.requests - a.requests);
   const total = sorted.reduce((sum, m) => sum + m.requests, 0);
 
   if (total <= 0) {
     elements.modelsBlock.hidden = true;
     return;
   }
-  elements.modelsHeading.textContent = label || (meter ? `Models used · ${meter.label}` : 'Models used');
+  elements.modelsHeading.textContent = data.modelsLabel || 'Models used';
   const items = buildLegendItems(sorted);
   // The donut grows with the legend so a long list doesn't leave a hole under a small ring
   const donutPx = Math.max(DONUT_MIN_PX, Math.min(DONUT_MAX_PX, items.length * DONUT_PX_PER_ROW));
@@ -383,14 +368,12 @@ function renderActivity() {
   grid.textContent = '';
   grid.className = `heatmap ${activityMode}`;
 
-  const { kind, buckets } = pickActivityBuckets(activityData);
-  const describe = (value) => (kind === 'requests'
-    ? `${Math.round(value)} request${Math.round(value) === 1 ? '' : 's'}`
-    : `+${value.toFixed(1)}% usage`);
+  const hours = activityData?.hours || {};
+  const describe = (value) => `${Math.round(value)} request${Math.round(value) === 1 ? '' : 's'}`;
 
   let total;
   if (activityMode === 'week') {
-    const week = buildWeekGrid(buckets);
+    const week = buildWeekGrid(hours);
     total = week.total;
 
     grid.appendChild(el('div'));
@@ -405,7 +388,7 @@ function renderActivity() {
       }
     }
   } else {
-    const month = buildMonthGrid(buckets);
+    const month = buildMonthGrid(hours, new Date(), activityData?.days || {});
     total = month.total;
 
     grid.appendChild(el('div'));
@@ -421,9 +404,11 @@ function renderActivity() {
     }
   }
 
-  elements.activityNote.textContent = total > 0
-    ? 'Based on usage this extension saw while Chrome was running.'
-    : 'Collecting activity – cells fill in as you use Ollama while Chrome is running.';
+  elements.activityNote.textContent = activityMode === 'week'
+    ? (total > 0
+      ? 'Hourly detail covers the last 24 h and builds up while your browser is running.'
+      : 'No requests yet – hourly cells fill in as you use Ollama.')
+    : 'Requests per day over the last 30 days (days start at 00:00 UTC).';
 }
 
 function setActivityMode(mode) {
@@ -435,7 +420,7 @@ function setActivityMode(mode) {
 
 /** Peak / off-peak pricing banner (schedule from ollama.com/pricing, computed from the clock). */
 function updatePeakBanner() {
-  if (!currentSettings.showPeakBanner) {
+  if (!currentSettings.showPeakBanner || setupNeeded) {
     elements.peakBanner.hidden = true;
     return;
   }
@@ -494,38 +479,43 @@ function formatLastUpdated(isoString) {
 }
 
 const STATUS_MESSAGES = {
-  auth_required: 'Not logged into Ollama Cloud. Click "Open Ollama Settings" to sign in.',
-  parse_error: 'Could not read the Ollama usage page – its layout may have changed. '
-    + 'Open Settings (gear) and use "Copy page diagnostics" to report it.',
-  network_error: 'Network error. Check your connection and try refreshing.'
+  forbidden: 'Ollama says your account is suspended or access is denied.',
+  rate_limited: 'Ollama is rate limiting requests. Showing the last data; retrying soon.',
+  api_error: 'The Ollama API returned something unexpected. Use Settings → Copy diagnostics to report it.',
+  network_error: 'Could not reach the Ollama API. Showing the last data; check your connection.'
 };
+
+const CONNECT_TEXT = {
+  no_key: 'The tracker reads your usage through Ollama\u2019s official API and needs an API key. Setup takes a minute.',
+  auth_required: 'Ollama rejected the saved API key (revoked or replaced?). Paste a new one to continue.'
+};
+
+function openSetup() {
+  chrome.runtime.openOptionsPage();
+  window.close();
+}
 
 /**
  * Render usage data in the popup
  */
-function renderUsage(rawData) {
-  const data = normalizeUsageData(rawData);
+function renderUsage(data) {
+  const needsKey = !data || data.status === 'no_key' || data.status === 'auth_required';
 
-  if (!data) {
-    // No data yet
+  setupNeeded = needsKey;
+  elements.connectBlock.hidden = !needsKey;
+  updatePeakBanner();
+  if (needsKey) {
+    elements.connectText.textContent = CONNECT_TEXT[data?.status] || CONNECT_TEXT.no_key;
     hideStatus();
-    planLabel = null;
-    syncHeader();
     elements.metersContainer.textContent = '';
-    elements.metersContainer.appendChild(el('div', 'empty-note', 'No data yet – click refresh.'));
-    elements.creditsBlock.hidden = true;
-    elements.modelsBlock.hidden = true;
-    elements.recentBlock.hidden = true;
-    elements.lastUpdated.hidden = true;
+    for (const node of [elements.creditsBlock, elements.modelsBlock, elements.recentBlock, elements.lastUpdated, elements.activityBlock]) {
+      node.hidden = true;
+    }
     return;
   }
+  elements.activityBlock.hidden = false;
 
-  // Plan label (e.g. "free", "Pay as you go"). Capitalise only the first letter:
-  // "free" -> "Free", "Pay as you go" stays readable.
-  planLabel = data.tier ? data.tier.charAt(0).toUpperCase() + data.tier.slice(1) : null;
-  syncHeader();
-
-  // Handle error states
+  // Error states keep showing the last good numbers (marked stale by the worker)
   if (data.status !== 'ok') {
     showStatus(data.status, STATUS_MESSAGES[data.status] || `Error: ${data.status}`);
   } else {
@@ -535,7 +525,7 @@ function renderUsage(rawData) {
   renderMeters(data.meters || [], data.status);
   renderCredits(data.credits);
   renderModels(data);
-  renderRecent(data.recentRequests);
+  renderRecent(data.recentHours);
 
   // Last updated
   elements.lastUpdated.textContent = `Last updated: ${formatLastUpdated(data.lastFetch)}`;
@@ -627,8 +617,6 @@ function showInlineStatus(node, message, isSuccess, hideAfterMs = 3000) {
  */
 function syncHeader() {
   elements.headerTitle.textContent = settingsOpen ? 'Settings' : 'Ollama Cloud Usage';
-  elements.tierBadge.textContent = planLabel || '';
-  elements.tierBadge.hidden = settingsOpen || !planLabel;
   elements.refreshBtn.hidden = settingsOpen;
   // SVG elements have no .hidden property - toggle the attribute
   elements.gearIcon.toggleAttribute('hidden', settingsOpen);
@@ -662,11 +650,10 @@ async function init() {
   const [data, settings, stored] = await Promise.all([
     loadUsageData(),
     loadSettings(),
-    chrome.storage.local.get(['ollamaActivity', 'ollamaModelColors'])
+    chrome.storage.local.get('ollamaActivity')
   ]);
   currentSettings = settings;
   activityData = stored.ollamaActivity || null;
-  learnedColors = stored.ollamaModelColors || {};
 
   renderUsage(data);
   renderActivity();
@@ -678,6 +665,9 @@ async function init() {
 
   elements.activityWeekBtn.addEventListener('click', () => setActivityMode('week'));
   elements.activityMonthBtn.addEventListener('click', () => setActivityMode('month'));
+
+  elements.connectBtn.addEventListener('click', openSetup);
+  elements.manageKeyBtn.addEventListener('click', openSetup);
 
   // Refresh button
   elements.refreshBtn.addEventListener('click', async () => {
@@ -738,7 +728,7 @@ async function init() {
   });
 
   elements.clearDataBtn.addEventListener('click', async () => {
-    if (!confirm('This will clear all locally stored usage data. Continue?')) {
+    if (!confirm('This clears all locally stored data, including the saved API key. Continue?')) {
       return;
     }
 
@@ -751,7 +741,7 @@ async function init() {
     elements.clearDataBtn.textContent = 'Clear All Local Data';
 
     if (result.success) {
-      showInlineStatus(elements.clearStatus, 'All local data cleared successfully', true);
+      showInlineStatus(elements.clearStatus, 'All local data cleared, including the saved API key', true);
       activityData = null;
       renderUsage(await loadUsageData());
       renderActivity();
@@ -763,10 +753,6 @@ async function init() {
   // Listen for storage changes (updates from background)
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    // Colors first: background.js writes them together with the usage data it renders
-    if (changes.ollamaModelColors) {
-      learnedColors = changes.ollamaModelColors.newValue || {};
-    }
     if (changes.ollamaUsageData) {
       renderUsage(changes.ollamaUsageData.newValue);
     }
