@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Promo marquee 1400x560</title>
+  <link rel="stylesheet" href="/files/store/slides/slides.css">
+  <style>
+    body { width: 1400px; height: 560px; }
+    .marquee { width: 1400px; height: 560px; display: flex; align-items: center; gap: 64px; padding: 0 96px; position: relative; overflow: hidden; }
+    .marquee .copy h1 { font-size: 66px; }
+    .marquee .lead { font-size: 28px; }
+    .pop { position: relative; flex: none; width: 430px; height: 560px; }
+    .pop iframe {
+      position: absolute; top: 56px; left: 0; width: 360px; height: 574px; border: 1px solid var(--border);
+      border-radius: 14px; background: var(--bg); transform: scale(1.2); transform-origin: top left;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+    }
+  </style>
+</head>
+<body>
+  <div class="marquee">
+    <div class="copy">
+      <div class="brand"><img src="/ext/icons/icon128.png" alt="">Usage Tracker for Ollama Cloud</div>
+      <h1>Your Ollama Cloud usage, <em>at a glance.</em></h1>
+      <p class="lead">Credits, models and activity in one click. Alerts before you hit the limit. No telemetry.</p>
+    </div>
+    <div class="pop"><iframe src="/popup?scenario=busy" title="Extension popup with sample data"></iframe></div>
+  </div>
+</body>
+</html>

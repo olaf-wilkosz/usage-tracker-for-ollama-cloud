@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Alerts</title>
+  <link rel="stylesheet" href="slides.css">
+  <style>
+    .stage { flex: none; width: 520px; display: flex; flex-direction: column; gap: 36px; }
+    .toolbar {
+      background: #2b2c30; border: 1px solid var(--border); border-radius: 14px;
+      padding: 22px 26px; display: flex; align-items: center; justify-content: space-around;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    .tb { display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 16px; color: var(--text-2); }
+    .tb-icon { position: relative; width: 72px; height: 72px; }
+    .tb-icon svg { width: 72px; height: 72px; display: block; }
+    .badge {
+      position: absolute; right: -8px; bottom: -4px; min-width: 34px; height: 26px; padding: 0 7px;
+      border-radius: 13px; font-size: 16px; font-weight: 700; line-height: 26px; text-align: center;
+      border: 2px solid #2b2c30;
+    }
+    .toast {
+      background: #2f3034; border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px;
+      display: flex; gap: 16px; align-items: flex-start; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    .toast img { width: 52px; height: 52px; flex: none; }
+    .toast .t { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .toast .m { font-size: 18px; color: var(--text-2); line-height: 1.35; }
+    .toast .s { font-size: 14px; color: var(--text-2); margin-top: 10px; opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <div class="copy">
+      <div class="brand"><img src="/ext/icons/icon128.png" alt="">Usage Tracker for Ollama Cloud</div>
+      <h1>Alerts <em>before</em> you hit the limit.</h1>
+      <p class="lead">The toolbar icon turns orange, then red. A notification fires once per cycle at the thresholds you choose.</p>
+      <div class="chips"><span class="chip">Warning &amp; critical thresholds</span><span class="chip">One alert per cycle</span></div>
+    </div>
+    <div class="stage">
+      <div class="toolbar" role="img" aria-label="Toolbar icon at 22%, 85% and 96% usage">
+        <div class="tb">
+          <div class="tb-icon">
+            <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="35" fill="#1a1b1e"/><circle cx="36" cy="36" r="27" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="12"/><circle cx="36" cy="36" r="27" fill="none" stroke="#388e3c" stroke-width="12" stroke-linecap="round" stroke-dasharray="37.3 170" transform="rotate(-90 36 36)"/></svg>
+            <span class="badge" style="background:#2e7d32;color:#fff">22</span>
+          </div>on track
+        </div>
+        <div class="tb">
+          <div class="tb-icon">
+            <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="35" fill="#1a1b1e"/><circle cx="36" cy="36" r="27" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="12"/><circle cx="36" cy="36" r="27" fill="none" stroke="#f57c00" stroke-width="12" stroke-linecap="round" stroke-dasharray="144.2 170" transform="rotate(-90 36 36)"/></svg>
+            <span class="badge" style="background:#f57c00;color:#1a1a1a">85</span>
+          </div>warning
+        </div>
+        <div class="tb">
+          <div class="tb-icon">
+            <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="35" fill="#1a1b1e"/><circle cx="36" cy="36" r="27" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="12"/><circle cx="36" cy="36" r="27" fill="none" stroke="#d32f2f" stroke-width="12" stroke-linecap="round" stroke-dasharray="162.9 170" transform="rotate(-90 36 36)"/></svg>
+            <span class="badge" style="background:#c62828;color:#fff">96</span>
+          </div>critical
+        </div>
+      </div>
+      <div class="toast">
+        <img src="/ext/icons/icon128.png" alt="">
+        <div>
+          <div class="t">Ollama Cloud Usage Alert</div>
+          <div class="m">Included usage at 85% (warning threshold: 80%)</div>
+          <div class="s">Usage Tracker for Ollama Cloud</div>
+        </div>
+      </div>
+    </div>
+    <div class="footnote">Unofficial &middot; not affiliated with Ollama</div>
+  </div>
+</body>
+</html>

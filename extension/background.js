@@ -236,7 +236,8 @@ async function checkThresholdNotifications(data, settings) {
  * @returns {Promise<{success: boolean, level: string, error?: string}>}
  */
 async function sendTestNotification() {
-  const level = await chrome.notifications.getPermissionLevel();
+  // Firefox has no getPermissionLevel; there a blocked notification is simply not shown
+  const level = chrome.notifications.getPermissionLevel ? await chrome.notifications.getPermissionLevel() : 'granted';
   if (level !== 'granted') {
     return { success: false, level, error: 'Notifications are blocked for this extension in the browser settings' };
   }

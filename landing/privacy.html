@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy policy - Usage Tracker for Ollama Cloud</title>
+  <meta name="description" content="What Usage Tracker for Ollama Cloud stores, what it sends, and where.">
+  <link rel="canonical" href="https://olaf-wilkosz.github.io/usage-tracker-for-ollama-cloud/privacy.html">
+  <link rel="icon" href="img/icon128.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="wrap">
+    <header class="site">
+      <a class="logo" href="./"><img src="img/icon128.png" alt="" width="36" height="36">Usage Tracker for Ollama Cloud</a>
+      <nav class="site" aria-label="Main">
+        <a href="./">Home</a>
+        <a href="https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud">GitHub</a>
+      </nav>
+    </header>
+  </div>
+
+  <main id="main" class="wrap doc">
+    <h1>Privacy policy</h1>
+    <p class="meta">Usage Tracker for Ollama Cloud &middot; last updated November 2026</p>
+
+    <p>Usage Tracker for Ollama Cloud (&ldquo;the extension&rdquo;) is a browser extension that shows your own Ollama Cloud usage. It is an independent project by Olaf Wilkosz and is not affiliated with Ollama. This policy says what the extension stores, what it sends and where. The short version: everything stays in your browser, and the only server the extension talks to is <code>ollama.com</code>.</p>
+
+    <h2>1. What is stored on your device</h2>
+    <p>All data is kept in the extension's local storage in your browser (<code>storage.local</code>) and nowhere else. Nothing is synced and nothing is sent to the developer.</p>
+    <table>
+      <tr><th>Data</th><th>Purpose</th></tr>
+      <tr><td><strong>Your Ollama API key</strong>, encrypted with AES-256-GCM. The encryption key is a non-extractable key held in the extension's own IndexedDB.</td><td>Authenticates requests to the Ollama API. The key is never displayed again, never logged and never included in diagnostics.</td></tr>
+      <tr><td><strong>Usage data</strong> from the Ollama API: included and purchased credit balances, reset times, request counts and cost per model and per hour or day.</td><td>Shown in the popup, the toolbar badge and notifications.</td></tr>
+      <tr><td><strong>Activity history</strong>: requests per hour and per day, kept for up to 35 days.</td><td>The activity heatmap.</td></tr>
+      <tr><td><strong>Settings</strong>: refresh interval, notification thresholds, display options.</td><td>Your preferences.</td></tr>
+      <tr><td><strong>Last API responses</strong> (usage numbers and model names only).</td><td>Copied to your clipboard only if you press &ldquo;Copy diagnostics&rdquo;, to attach to a bug report.</td></tr>
+      <tr><td><strong>Housekeeping</strong>: which alerts were already shown, a consecutive-error counter.</td><td>Avoids repeated notifications.</td></tr>
+    </table>
+
+    <h2>2. What is sent, and to whom</h2>
+    <p>The extension sends read-only <code>GET</code> requests to the official Ollama API and nowhere else:</p>
+    <ul>
+      <li><code>https://ollama.com/api/balance</code></li>
+      <li><code>https://ollama.com/api/usage</code> (24-hour and 30-day ranges)</li>
+    </ul>
+    <p>Each request carries your API key in the <code>Authorization</code> header. Requests are made without cookies and without a referrer. Ollama's own terms and privacy policy apply to what Ollama does with those requests.</p>
+
+    <h2>3. What the extension does not do</h2>
+    <ul>
+      <li>No analytics, telemetry, crash reporting or advertising.</li>
+      <li>No servers operated by the developer; there is nothing to send your data to.</li>
+      <li>No access to the pages you browse, your history, bookmarks or cookies.</li>
+      <li>No sale, sharing or transfer of data to third parties.</li>
+      <li>Data is used only to provide the features described above, in line with the Chrome Web Store User Data Policy including its Limited Use requirements.</li>
+    </ul>
+
+    <h2>4. Permissions</h2>
+    <ul>
+      <li><strong>storage</strong>: keeps the encrypted key, usage data, activity history and settings on your device.</li>
+      <li><strong>alarms</strong>: refreshes your usage on the interval you choose.</li>
+      <li><strong>notifications</strong>: shows the usage alerts you enable, and the &ldquo;Send test&rdquo; notification.</li>
+      <li><strong>Host access to <code>https://ollama.com/api/*</code></strong>: lets the extension call the Ollama API.</li>
+    </ul>
+
+    <h2>5. A note about API keys</h2>
+    <p>Ollama API keys cannot currently be limited to read-only access, so a key can also be used to run models on your account. Treat it like a password. The extension keeps it encrypted and sends it only to ollama.com. You can revoke it at any time at <a href="https://ollama.com/settings/keys">ollama.com/settings/keys</a>.</p>
+
+    <h2>6. Deleting your data</h2>
+    <ul>
+      <li><strong>Remove key from this browser</strong> (extension options) deletes the key and the usage data read with it (settings and activity history are kept).</li>
+      <li><strong>Clear All Local Data</strong> (extension settings) deletes everything the extension stores, including settings and history.</li>
+      <li>Uninstalling the extension removes all of its data from your browser.</li>
+    </ul>
+
+    <h2>7. Changes and contact</h2>
+    <p>If this policy changes, the date above is updated and the change is described in the project's release notes. Questions about privacy: open an issue at <a href="https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/issues">github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/issues</a>. The source code is public at <a href="https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud">github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud</a>, so every statement above can be checked.</p>
+
+    <p class="meta" style="margin-top:48px">Usage Tracker for Ollama Cloud is not a product or service of Ollama.</p>
+  </main>
+</body>
+</html>

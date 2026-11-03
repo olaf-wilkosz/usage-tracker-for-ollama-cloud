@@ -1,0 +1,29 @@
+name: Bug report
+description: Something shows wrong numbers or does not work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what do you see instead? A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Extension version and browser
+      placeholder: "1.2.0, Chrome 130 on Windows 11"
+    validations:
+      required: true
+  - type: input
+    id: plan
+    attributes:
+      label: Your Ollama plan
+      description: Free, Pro, pay as you go, legacy session/weekly...
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics (optional)
+      description: In the extension settings press "Copy diagnostics" and paste here. It contains usage numbers and model names, never your API key. Review it before sharing.
+      render: json

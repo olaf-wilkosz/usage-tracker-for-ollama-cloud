@@ -3,7 +3,7 @@
 // (scripts/render-store.mjs).
 //
 //   node scripts/preview-server.mjs            -> http://localhost:8765
-//   /popup?scenario=free|busy|legacy|payg|connect|badkey|offline|empty[&settings=1]
+//   /popup?scenario=free|busy|legacy|payg|connect|badkey|offline|empty[&settings=1][&click=#id][&scroll=#id]
 //   /options?scenario=connected|fresh
 //
 // "free" is a real Free-account response (test/fixtures) moved to the present; the other
@@ -166,6 +166,15 @@ export function startServer(port = 8765) {
       const hasKey = isOptions ? name === 'connected' : !['connect', 'empty'].includes(name);
       let html = readFileSync(join(EXT, isOptions ? 'options.html' : 'popup.html'), 'utf8');
       html = html.replace('<head>', () => `<head><base href="/ext/">${stub({ ...state, hasKey })}`);
+      // ?click=#selector and ?scroll=#selector drive the page into the state a screenshot needs
+      const click = url.searchParams.get('click');
+      const scroll = url.searchParams.get('scroll');
+      if (click || scroll) {
+        html = html.replace('</body>', () => `<script type="module">setTimeout(() => {
+          ${click ? `document.querySelector(${JSON.stringify(click)}).click();` : ''}
+          ${scroll ? `document.querySelector(${JSON.stringify(scroll)}).scrollIntoView({ block: 'start' }); document.getElementById('mainView').scrollTop -= 12;` : ''}
+        }, 400)</script></body>`);
+      }
       if (!isOptions && url.searchParams.get('settings')) {
         html = html.replace('</body>', () => '<script type="module">setTimeout(() => document.getElementById("settingsBtn").click(), 300)</script></body>');
       }

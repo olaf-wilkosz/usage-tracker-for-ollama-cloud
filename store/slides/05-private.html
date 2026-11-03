@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Private by design</title>
+  <link rel="stylesheet" href="slides.css">
+  <style>
+    .stage { flex: none; width: 560px; display: flex; flex-direction: column; align-items: stretch; }
+    .node {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 28px;
+      font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    .node small { display: block; font-size: 17px; font-weight: 400; color: var(--text-2); margin-top: 4px; }
+    .node svg { width: 40px; height: 40px; flex: none; }
+    .link { display: flex; align-items: center; gap: 14px; padding: 6px 0 6px 46px; color: var(--text-2); font-size: 17px; }
+    .link .line { width: 3px; height: 56px; background: linear-gradient(var(--green), var(--blue)); border-radius: 2px; }
+    .never-label { margin-top: 28px; font-size: 16px; color: var(--text-2); }
+    .never { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .never span {
+      font-size: 17px; padding: 8px 16px; border-radius: 999px; border: 1px dashed var(--border);
+      color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--red);
+    }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <div class="copy">
+      <div class="brand"><img src="/ext/icons/icon128.png" alt="">Usage Tracker for Ollama Cloud</div>
+      <h1>Private <em>by design.</em></h1>
+      <p class="lead">Your API key and usage data stay in your browser. The only server it talks to is ollama.com.</p>
+      <div class="chips"><span class="chip">No telemetry</span><span class="chip">Key encrypted at rest</span><span class="chip">Open source (MIT)</span></div>
+    </div>
+    <div class="stage">
+      <div class="node">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#66bb6a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <div>Your browser<small>Key sealed on this device &middot; usage stays local</small></div>
+      </div>
+      <div class="link"><span class="line"></span>HTTPS, read-only requests, no cookies</div>
+      <div class="node">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#64b5f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>
+        <div>ollama.com/api<small>The official Ollama API: balance and usage</small></div>
+      </div>
+      <div class="never-label">Never contacted:</div>
+      <div class="never"><span>analytics</span><span>ad networks</span><span>our servers</span></div>
+    </div>
+    <div class="footnote">Unofficial &middot; not affiliated with Ollama</div>
+  </div>
+</body>
+</html>

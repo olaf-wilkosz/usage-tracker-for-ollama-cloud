@@ -1,0 +1,70 @@
+# Architecture and decisions
+
+## Data flow
+
+```
+alarm / popup refresh button / browser start
+        |
+        v
+background.js (service worker; event page on Firefox)
+  1. openSecret()      decrypt the API key (secret-store.js)
+  2. fetchApiData()    GET /api/balance, /api/usage?range=24h, /api/usage?range=30d  (ollama-api.js)
+  3. buildUsage()      -> { status, meters[], credits, models[], recentHours[] }
+  4. storage.local     ollamaUsageData, ollamaActivity (hours + days), ollamaDiagnostics
+  5. updateBadge()     toolbar ring(s), percentage badge, tooltip
+  6. notifications     once per meter per cycle; escalation warning -> critical
+        |
+        v   storage.onChanged
+popup.js renders what is stored; it never talks to Ollama itself
+```
+
+The popup and the options page only exchange messages with the worker (`GET_USAGE_DATA`, `SAVE_API_KEY`, ...). The API key exists in plain text only inside the worker, only while a request is being made.
+
+### Usage data model
+
+`status` is one of `ok`, `no_key`, `auth_required` (401), `forbidden` (403), `rate_limited` (429), `network_error`, `api_error` (response did not match the documented schema). Transient failures (`network_error`, `rate_limited`, `api_error`) keep the previous numbers and set `stale: true`; `no_key` / `auth_required` / `forbidden` clear them.
+
+`meters[]` is generic on purpose: standard plans produce one meter (`included`, from `allowance_usd` and `balance_usd`, resets at `period.until`); legacy plans produce `session` and `weekly`. An account without included credits (pay as you go) produces no meter, only `credits`.
+
+### Activity
+
+- `hours`: requests per local hour, taken from the 24h response (hourly buckets). The API gives no hourly detail beyond 24h, so the week heatmap fills as the browser keeps running.
+- `days`: requests per day for 30 days from the 30d response (days start at 00:00 UTC), so the month view is complete from the first refresh. A day shows the larger of the daily total and the sum of its hours.
+- Entries older than 35 days are pruned.
+
+## API key storage
+
+Ollama API keys have no scopes, so the key is as powerful as the account's ability to run models. Decisions:
+
+- **Where**: `chrome.storage.local`, never `sync`, never `localStorage`, never in the page DOM after saving.
+- **Sealed at rest**: AES-256-GCM. The AES key is generated with `extractable: false` and kept in the extension's own IndexedDB; only `secret-store.js` uses it. A copied `storage.local` file, a profile backup or a storage dump contains only ciphertext.
+- **Not a defence against** malware that runs as the user with the whole profile: it could drive the extension's own code. No browser extension can protect against that, and the docs do not claim otherwise.
+- **No PIN**: a PIN would stop background tracking after every browser restart until it is typed again, which defeats the purpose of a passive tracker. If demand appears, a PIN mode can be an opt-in (the key would live in `storage.session` after unlock).
+- **Validated before saving**: the key is checked with `GET /api/balance`; a rejected key is never stored.
+- **Never leaves the worker**: not echoed in responses, not logged, not part of diagnostics (which contain only API response bodies).
+- **Removal**: "Remove key" deletes the sealed blob, the sealing key and derived data; "Clear All Local Data" wipes everything.
+
+## Why the official API (and not the settings page)
+
+Early versions read `ollama.com/settings` with the user's session cookies and parsed the HTML. That was replaced because:
+
+1. Ollama's terms forbid automated access to the service without permission; the documented API is the sanctioned route.
+2. HTML parsing broke whenever the page changed (it did, with the new billing).
+3. It needed the `offscreen` permission (DOMParser) and broad host access with cookies.
+4. The API documents the paid-plan shapes too, which a Free-account developer could never test against the page.
+
+Trade-offs accepted: the user must create an API key; per-request detail (the old "Recent requests" table) is gone in favour of hourly buckets; model colors are no longer read from the page (a small table of observed colors plus a hash fallback, decorative only).
+
+## One codebase, two browsers
+
+`extension/` is the source for Chrome, Edge, Brave and Firefox. `scripts/build.mjs` writes two thin manifests: Chrome keeps `background.service_worker`; Firefox gets `background.scripts` (event page, ES module), a gecko add-on id and `data_collection_permissions`. The code feature-detects the few differences (`notifications.getPermissionLevel` does not exist on Firefox).
+
+## Accessibility
+
+Text and badge colors are checked against WCAG AA (4.5:1) by a unit test (`test/ollama-api.test.js`, "accessibility"). Ring and bar colors are graphics (3:1 needed, met). Heatmap cells and model swatches are decorative: values are always available as text or tooltips.
+
+## Testing
+
+- `node --test`: pure logic (API mapping, activity, settings, key sealing) and the service worker against stubbed `chrome.*` and a stubbed Ollama API, using real API responses as fixtures (`test/fixtures`).
+- `npm run smoke`: loads the unpacked extension into a real Chromium-based browser and drives the setup flow against the real Ollama API with a made-up key.
+- Not covered automatically: Firefox, and paid-plan accounts (the API schemas are taken from the official documentation).

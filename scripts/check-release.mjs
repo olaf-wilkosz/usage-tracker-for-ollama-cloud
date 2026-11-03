@@ -1,0 +1,88 @@
+// Release sanity checks, run by CI on every push and before a release is built:
+//
+//   node scripts/check-release.mjs [v1.2.3]    (optional tag to compare the version with)
+//
+// Catches the things that otherwise only fail at store upload: versions out of sync, store
+// text limits, files the manifest or pages point at that don't exist, permissions that crept
+// in, and code patterns the stores reject.
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const EXT = join(ROOT, 'extension');
+const read = (path) => readFileSync(path, 'utf8');
+
+const manifest = JSON.parse(read(join(EXT, 'manifest.json')));
+const pkg = JSON.parse(read(join(ROOT, 'package.json')));
+const tag = process.argv[2];
+
+// What the extension is allowed to ask for. Changing this list is a deliberate decision:
+// it also changes the store listing's permission justifications and the privacy policy.
+const EXPECTED_PERMISSIONS = ['alarms', 'notifications', 'storage'];
+const EXPECTED_HOSTS = ['https://ollama.com/api/*'];
+
+const problems = [];
+const check = (ok, message) => { if (!ok) problems.push(message); };
+
+// versions
+check(manifest.version === pkg.version, `package.json version ${pkg.version} != manifest.json version ${manifest.version}`);
+if (tag) check(tag === `v${manifest.version}`, `tag ${tag} does not match manifest version v${manifest.version}`);
+check(/^\d+\.\d+\.\d+$/.test(manifest.version), `manifest version "${manifest.version}" is not x.y.z`);
+
+// store limits (Chrome Web Store: name 75, summary 132)
+check(manifest.name.length <= 75, `name is ${manifest.name.length} chars (max 75)`);
+check(manifest.description.length <= 132, `description is ${manifest.description.length} chars (max 132)`);
+check(/unofficial|not affiliated/i.test(manifest.description), 'description must say the extension is unofficial');
+
+// the store listing text must match the manifest summary
+check(read(join(ROOT, 'store', 'listing.md')).includes(manifest.description), 'store/listing.md does not contain the manifest description verbatim');
+
+// permissions
+check(JSON.stringify([...(manifest.permissions || [])].sort()) === JSON.stringify(EXPECTED_PERMISSIONS),
+  `permissions changed: ${JSON.stringify(manifest.permissions)} (expected ${JSON.stringify(EXPECTED_PERMISSIONS)})`);
+check(JSON.stringify(manifest.host_permissions) === JSON.stringify(EXPECTED_HOSTS),
+  `host permissions changed: ${JSON.stringify(manifest.host_permissions)}`);
+check(!manifest.optional_permissions && !manifest.content_scripts && !manifest.externally_connectable && !manifest.web_accessible_resources,
+  'unexpected manifest sections (optional permissions, content scripts, externally_connectable, web_accessible_resources)');
+
+// referenced files exist
+const referenced = [
+  manifest.action?.default_popup, manifest.options_page, manifest.background?.service_worker,
+  ...Object.values(manifest.icons || {})
+];
+for (const file of referenced) check(file && existsSync(join(EXT, file)), `manifest points at missing file: ${file}`);
+
+for (const page of readdirSync(EXT).filter((f) => f.endsWith('.html'))) {
+  const html = read(join(EXT, page));
+  for (const [, src] of html.matchAll(/<(?:script|link)[^>]+(?:src|href)="([^"]+)"/g)) {
+    if (/^(https?:)?\/\//.test(src)) check(false, `${page} loads a remote resource: ${src}`);
+    else check(existsSync(join(EXT, src)), `${page} points at missing file: ${src}`);
+  }
+}
+
+// code patterns the stores reject, and things this extension promises never to do
+function listFiles(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? listFiles(path) : [path];
+  });
+}
+const FORBIDDEN = [
+  [/\beval\s*\(|new Function\s*\(/, 'eval / new Function'],
+  [/\.innerHTML\s*=|insertAdjacentHTML/, 'innerHTML (build DOM with createElement/textContent)'],
+  [/chrome\.cookies|credentials:\s*['"]include['"]/, 'cookie access (requests must use credentials: "omit")'],
+  [/https?:\/\/(?!ollama\.com|www\.w3\.org|github\.com\/olaf-wilkosz|docs\.ollama\.com)[\w.-]+/, 'a URL outside the allowed hosts']
+];
+for (const path of listFiles(EXT).filter((f) => /\.(js|html|css)$/.test(f))) {
+  const text = read(path);
+  for (const [pattern, what] of FORBIDDEN) {
+    check(!pattern.test(text), `${path.slice(ROOT.length)} contains ${what}`);
+  }
+}
+
+if (problems.length > 0) {
+  console.error(`Release check failed:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
+  process.exit(1);
+}
+console.log(`Release check passed: ${manifest.name} v${manifest.version} (${manifest.description.length}/132 chars in the description)`);
