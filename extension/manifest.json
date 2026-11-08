@@ -26,5 +26,13 @@
   "host_permissions": [
     "https://ollama.com/api/*"
   ],
-  "minimum_chrome_version": "110"
+  "minimum_chrome_version": "110",
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+U"
+      },
+      "description": "Open the usage popup"
+    }
+  }
 }

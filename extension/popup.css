@@ -861,6 +861,25 @@ footer {
   }
 }
 
+.models-caption {
+  margin: -4px 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Heatmap cell with no recorded data (not the same as zero requests) */
+.hm-cell.unknown {
+  background: repeating-linear-gradient(135deg, transparent 0 2px, rgba(255, 255, 255, 0.09) 2px 3px);
+}
+
+/* Windows contrast themes drop background colors: keep the pressed toggle visible */
+@media (forced-colors: active) {
+  .seg-btn.active {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
 /* Text for assistive technology only (e.g. the heatmap summary) */
 .sr-only {
   position: absolute;

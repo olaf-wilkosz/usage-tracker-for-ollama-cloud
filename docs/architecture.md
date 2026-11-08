@@ -34,9 +34,12 @@ Saving or removing the key bumps an epoch counter; a refresh that was reading wi
 
 ### Models ranges
 
-`modelsByRange["30d"]` comes from the 30d response's totals; `["7d"]` is summed from its last 8 daily buckets (what the API's own `range=7d` returns: seven days ago at 00:00 UTC up to now), so no extra request is needed. A test pins this against a real `range=7d` response. The popup defaults to 7 days, which is also what ollama.com's usage page shows by default.
+`modelsByRange` has three entries `{ from, to, models }`, all from the one 30-day response (daily buckets start at 00:00 UTC, so each range is exact): `month` = the buckets from the 1st of the current UTC month (what ollama.com's usage page shows: "Nov 1–8, UTC", verified on a real account: 95 requests, $0.26), `7d` = the last 8 buckets (what the API's own `range=7d` returns) and `30d` = the response totals. No extra request is needed. The popup defaults to the month.
 
 ### Activity
+
+`covered` lists the hour ranges the extension has actually read (merged on every refresh; a gap appears when the browser was closed for more than a day) and `daysFrom` the first day of the 30-day series. The heatmap hatches cells outside them: "not recorded yet" is different from "zero requests".
+
 
 - `hours`: requests per local hour, taken from the 24h response (hourly buckets). The API gives no hourly detail beyond 24h, so the week heatmap fills as the browser keeps running.
 - `days`: requests per day for 30 days from the 30d response (days start at 00:00 UTC), so the month view is complete from the first refresh. A day shows the larger of the daily total and the sum of its hours.

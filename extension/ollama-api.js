@@ -167,6 +167,26 @@ function modelsFromBuckets(buckets) {
   return [...sums.values()].filter((m) => m.requests > 0).sort((a, b) => b.requests - a.requests);
 }
 
+/** A models range: the UTC days it covers (first and last) plus its rows. */
+function rangeOf(buckets, models = modelsFromBuckets(buckets)) {
+  return { from: buckets[0]?.from.slice(0, 10) ?? null, to: buckets.at(-1)?.from.slice(0, 10) ?? null, models };
+}
+
+/**
+ * The three model views, all from the one 30-day response (daily buckets start at 00:00 UTC,
+ * so every range is exact): the calendar month so far - what the usage page on ollama.com
+ * shows - plus the API's own 7d and 30d ranges.
+ */
+function modelRanges(month) {
+  const days = month.buckets;
+  const monthStart = days.length > 0 ? `${days.at(-1).from.slice(0, 7)}-01` : '';
+  return {
+    month: rangeOf(days.filter((b) => b.from.slice(0, 10) >= monthStart)),
+    '7d': rangeOf(days.slice(-SHORT_RANGE_DAYS)),
+    '30d': rangeOf(days, modelsFromTotals(month.totals))
+  };
+}
+
 /**
  * Turn the raw API responses into the extension's usage data (see usage.js).
  * @param {{balance: Object, day: Object, month: Object}} raw
@@ -197,10 +217,7 @@ export function buildUsage({ balance, day, month }) {
     status: 'ok',
     meters,
     credits,
-    modelsByRange: {
-      '7d': modelsFromBuckets(month.buckets.slice(-SHORT_RANGE_DAYS)),
-      '30d': modelsFromTotals(month.totals)
-    },
+    modelsByRange: modelRanges(month),
     recentHours
   };
 }
@@ -226,5 +243,15 @@ export function extractActivity({ day, month }) {
     if (typeof b.from !== 'string' || !(b.request_count > 0)) continue;
     days[b.from.slice(0, 10)] = b.request_count;
   }
-  return { hours, days };
+  // What the readings cover, so the heatmap can tell "no requests" from "not recorded yet"
+  const first = (day?.buckets ?? [])[0];
+  const last = (day?.buckets ?? []).at(-1);
+  const keyOf = (iso) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}`;
+  };
+  const coverage = first && last && !isNaN(new Date(first.from)) && !isNaN(new Date(last.from))
+    ? { hoursFrom: keyOf(first.from), hoursTo: keyOf(last.from), daysFrom: month?.buckets?.[0]?.from?.slice(0, 10) ?? null }
+    : null;
+  return { hours, days, coverage };
 }

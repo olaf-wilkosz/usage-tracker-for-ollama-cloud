@@ -48,6 +48,47 @@ test('month grid: daily totals from the API fill days without hourly data', () =
   assert.equal(m.total, 20);
 });
 
+test('week and month grids: cells outside what was recorded are "unknown", not zero', () => {
+  const now = new Date(2026, 10, 3, 15, 30);
+  const covered = [['2026-11-02T14', '2026-11-03T15']];
+  const week = A.buildWeekGrid({ '2026-11-03T14': 4 }, now, covered);
+  const cell = (date, hour) => week.rows.find((r) => r.date.getDate() === date).cells[hour];
+  assert.equal(cell(3, 14).known, true);
+  assert.equal(cell(3, 14).value, 4);
+  assert.equal(cell(2, 13).known, false, 'before the first reading');
+  assert.equal(cell(2, 14).known, true, 'a recorded hour with no requests is a real zero');
+  assert.equal(cell(1, 5).known, false);
+  assert.ok(A.buildWeekGrid({}, now).rows.every((r) => r.cells.every((c) => c.known)), 'no list: everything counts as known');
+
+  const month = A.buildMonthGrid({}, now, {}, '2026-10-09');
+  const day = (monthIndex, d) => month.rows.flatMap((r) => r.cells).find((c) => c.date.getMonth() === monthIndex && c.date.getDate() === d);
+  assert.equal(day(9, 8).known, false, 'the day before the 30d series starts');
+  assert.equal(day(9, 9).known, true);
+});
+
+test('mergeActivity: covered periods grow with every reading and stay separate across a gap', () => {
+  const now = new Date(2026, 10, 10, 12);
+  const read = (from, to) => ({ hours: {}, days: {}, coverage: { hoursFrom: from, hoursTo: to, daysFrom: '2026-10-11' } });
+  let state = A.mergeActivity(undefined, read('2026-11-03T10', '2026-11-04T10'), now);
+  assert.deepEqual(state.covered, [['2026-11-03T10', '2026-11-04T10']]);
+  state = A.mergeActivity(state, read('2026-11-03T15', '2026-11-04T15'), now); // overlapping: one period
+  assert.deepEqual(state.covered, [['2026-11-03T10', '2026-11-04T15']]);
+  state = A.mergeActivity(state, read('2026-11-04T16', '2026-11-05T16'), now); // touching: still one
+  assert.deepEqual(state.covered, [['2026-11-03T10', '2026-11-05T16']]);
+  state = A.mergeActivity(state, read('2026-11-09T01', '2026-11-10T01'), now); // browser was closed in between
+  assert.deepEqual(state.covered, [['2026-11-03T10', '2026-11-05T16'], ['2026-11-09T01', '2026-11-10T01']]);
+  assert.equal(state.daysFrom, '2026-10-11');
+});
+
+test('mergeActivity: data stored before coverage was tracked is assumed to cover its own span', () => {
+  const now = new Date(2026, 10, 10, 12);
+  const stored = { hours: { '2026-11-05T09': 2, '2026-11-06T20': 1 }, days: {} };
+  const merged = A.mergeActivity(stored, { hours: {}, days: {}, coverage: { hoursFrom: '2026-11-09T12', hoursTo: '2026-11-10T12', daysFrom: '2026-10-11' } }, now);
+  assert.deepEqual(merged.covered, [['2026-11-05T09', '2026-11-06T20'], ['2026-11-09T12', '2026-11-10T12']]);
+  // and a reading without coverage info leaves the list alone
+  assert.deepEqual(A.mergeActivity(merged, { hours: {}, days: {} }, now).covered, merged.covered);
+});
+
 test('mergeActivity: fresh numbers replace stored ones, old entries are pruned', () => {
   const now = new Date(2026, 10, 3, 12);
   const stored = {

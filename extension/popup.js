@@ -12,7 +12,7 @@ import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
   isPinnedToToolbar, showInlineStatus, DEFAULT_SETTINGS
 } from './settings.js';
-import { buildLegendItems, summarizeActivity } from './popup-logic.js';
+import { buildLegendItems, summarizeActivity, formatDayRange, rangeEntry } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
@@ -49,6 +49,8 @@ const elements = {
   modelsBlock: document.getElementById('modelsBlock'),
   modelsEmpty: document.getElementById('modelsEmpty'),
   modelsLayout: document.getElementById('modelsLayout'),
+  modelsCaption: document.getElementById('modelsCaption'),
+  modelsRangeMonthBtn: document.getElementById('modelsRangeMonthBtn'),
   modelsRange7Btn: document.getElementById('modelsRange7Btn'),
   modelsRange30Btn: document.getElementById('modelsRange30Btn'),
   activitySummary: document.getElementById('activitySummary'),
@@ -81,7 +83,7 @@ const elements = {
 let currentSettings = { ...DEFAULT_SETTINGS };
 let activityData = null;
 let activityMode = 'week';
-let modelsRange = '7d'; // default matches the 7-day view of ollama.com's own usage page
+let modelsRange = 'month'; // default matches what ollama.com's own usage page shows: the calendar month so far
 let lastUsage = null;
 let settingsOpen = false;
 let pinHintWanted = false; // not pinned to the toolbar and not dismissed yet
@@ -327,30 +329,37 @@ function renderRecent(hours) {
   }
 }
 
-const RANGE_NAMES = { '7d': 'last 7 days', '30d': 'last 30 days' };
+const RANGE_NAMES = { month: 'this month', '7d': 'the last 7 days', '30d': 'the last 30 days' };
+const RANGE_BUTTONS = { month: 'modelsRangeMonthBtn', '7d': 'modelsRange7Btn', '30d': 'modelsRange30Btn' };
 
 function renderModels(data) {
   const byRange = data.modelsByRange || {};
-  const total = (list) => (list || []).reduce((sum, m) => sum + m.requests, 0);
+  const entries = Object.fromEntries(Object.keys(RANGE_BUTTONS).map((range) => [range, rangeEntry(byRange[range])]));
+  const total = (list) => list.reduce((sum, m) => sum + m.requests, 0);
 
-  // Nothing in either range: nothing to show at all
-  if (total(byRange['7d']) <= 0 && total(byRange['30d']) <= 0) {
+  // Nothing in any range: nothing to show at all
+  if (Object.values(entries).every((entry) => total(entry.models) <= 0)) {
     elements.modelsBlock.hidden = true;
     return;
   }
   elements.modelsBlock.hidden = false;
 
-  const sorted = [...(byRange[modelsRange] || [])].sort((a, b) => b.requests - a.requests);
+  for (const [range, id] of Object.entries(RANGE_BUTTONS)) {
+    elements[id].classList.toggle('active', modelsRange === range);
+    elements[id].setAttribute('aria-pressed', String(modelsRange === range));
+  }
+
+  const { from, to, models } = entries[modelsRange];
+  const sorted = [...models].sort((a, b) => b.requests - a.requests);
   const sum = total(sorted);
-  elements.modelsRange7Btn.classList.toggle('active', modelsRange === '7d');
-  elements.modelsRange30Btn.classList.toggle('active', modelsRange === '30d');
-  elements.modelsRange7Btn.setAttribute('aria-pressed', String(modelsRange === '7d'));
-  elements.modelsRange30Btn.setAttribute('aria-pressed', String(modelsRange === '30d'));
+  const cost = sorted.reduce((acc, m) => acc + (m.cost || 0), 0);
+  const days = formatDayRange(from, to);
+  elements.modelsCaption.textContent = [days && `${days}, UTC`, sum > 0 && formatUsd(cost)].filter(Boolean).join(' · ');
 
   elements.modelsEmpty.hidden = sum > 0;
   elements.modelsLayout.hidden = sum <= 0;
   if (sum <= 0) {
-    elements.modelsEmpty.textContent = `No requests in the ${RANGE_NAMES[modelsRange]}.`;
+    elements.modelsEmpty.textContent = `No requests ${RANGE_NAMES[modelsRange]}.`;
     return;
   }
 
@@ -373,9 +382,9 @@ async function setModelsRange(range) {
 }
 
 /** Shared activity cell: level class + tooltip. */
-function heatCell(value, max, title, future) {
-  const cell = el('div', future ? 'hm-cell future' : `hm-cell level-${heatLevel(value, max)}`);
-  if (!future) cell.title = title;
+function heatCell(value, max, title, future, known = true) {
+  const cell = el('div', future ? 'hm-cell future' : known ? `hm-cell level-${heatLevel(value, max)}` : 'hm-cell unknown');
+  if (!future) cell.title = known ? title : 'Not recorded yet';
   return cell;
 }
 
@@ -388,10 +397,11 @@ function renderActivity() {
   const describe = (value) => `${Math.round(value)} request${Math.round(value) === 1 ? '' : 's'}`;
 
   let total;
+  let unknownCells = false; // any cell before the extension started recording
   let busiest = null; // { label, value } of the busiest cell, for the text summary
   const consider = (label, value) => { if (value > 0 && (!busiest || value > busiest.value)) busiest = { label, value }; };
   if (activityMode === 'week') {
-    const week = buildWeekGrid(hours);
+    const week = buildWeekGrid(hours, new Date(), activityData?.covered ?? null);
     total = week.total;
 
     grid.appendChild(el('div'));
@@ -403,11 +413,12 @@ function renderActivity() {
       for (const cell of cells) {
         const when = `${date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${String(cell.hour).padStart(2, '0')}:00`;
         consider(when, cell.value);
-        grid.appendChild(heatCell(cell.value, week.max, `${when} – ${describe(cell.value)}`, cell.future));
+        if (!cell.known) unknownCells = true;
+        grid.appendChild(heatCell(cell.value, week.max, `${when} – ${describe(cell.value)}`, cell.future, cell.known));
       }
     }
   } else {
-    const month = buildMonthGrid(hours, new Date(), activityData?.days || {});
+    const month = buildMonthGrid(hours, new Date(), activityData?.days || {}, activityData?.daysFrom ?? null);
     total = month.total;
 
     grid.appendChild(el('div'));
@@ -419,7 +430,8 @@ function renderActivity() {
       for (const cell of cells) {
         const when = cell.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
         consider(when, cell.value);
-        grid.appendChild(heatCell(cell.value, month.max, `${when} – ${describe(cell.value)}`, cell.future));
+        if (!cell.known) unknownCells = true;
+        grid.appendChild(heatCell(cell.value, month.max, `${when} – ${describe(cell.value)}`, cell.future, cell.known));
       }
     }
   }
@@ -430,6 +442,7 @@ function renderActivity() {
       ? 'Hourly detail covers the last 24 h and builds up while your browser is running.'
       : 'No requests yet – hourly cells fill in as you use Ollama.')
     : 'Requests per day over the last 30 days (days start at 00:00 UTC).';
+  if (unknownCells) elements.activityNote.textContent += ' Hatched cells are not recorded yet.';
 }
 
 function setActivityMode(mode) {
@@ -702,7 +715,7 @@ async function init() {
   ]);
   currentSettings = settings;
   activityData = stored.ollamaActivity || null;
-  if (stored.ollamaModelsRange === '7d' || stored.ollamaModelsRange === '30d') modelsRange = stored.ollamaModelsRange;
+  if (stored.ollamaModelsRange in RANGE_BUTTONS) modelsRange = stored.ollamaModelsRange;
 
   await checkPinHint();
   renderUsage(data);
@@ -713,6 +726,7 @@ async function init() {
     updatePeakBanner();
   }, COUNTDOWN_REFRESH_MS);
 
+  elements.modelsRangeMonthBtn.addEventListener('click', () => setModelsRange('month'));
   elements.modelsRange7Btn.addEventListener('click', () => setModelsRange('7d'));
   elements.modelsRange30Btn.addEventListener('click', () => setModelsRange('30d'));
   elements.activityWeekBtn.addEventListener('click', () => setActivityMode('week'));

@@ -24,7 +24,8 @@ Usage Tracker for Ollama Cloud puts your usage in the toolbar: a ring and a perc
 WHAT YOU GET
 • Live toolbar badge with your included usage in percent
 • Included credits (what is left, when it refills) and purchased credits
-• Models breakdown for the last 7 or 30 days: requests, share and cost per model
+• Models breakdown for this month (as on ollama.com), the last 7 days or the last 30 days: requests, share and cost per model
+• Keyboard shortcut Alt+Shift+U to open the popup
 • Recent activity by hour, plus an activity heatmap (last week by hour, last 30 days by day)
 • Alerts at a warning and a critical threshold you choose: one notification per cycle, no nagging
 • Peak / off-peak pricing banner based on Ollama's published schedule
@@ -54,6 +55,7 @@ Show the user's own Ollama Cloud usage and credits (read from the official Ollam
 | Permission | Justification |
 | --- | --- |
 | `storage` | Stores the encrypted API key, the latest usage data, the activity history for the heatmap (up to 35 days) and the user's settings, locally in the browser. |
+| Keyboard shortcut (`commands`) | Optional Alt+Shift+U (`_execute_action`) to open the popup without the mouse; no permission is needed. |
 | `alarms` | Refreshes the usage data in the background on the interval the user chooses (1, 5 or 15 minutes). |
 | `notifications` | Shows the usage alerts the user enables (warning / critical threshold) and the "Send test" notification. |
 | Host `https://ollama.com/api/*` | Calls the official Ollama API (`/api/balance` and `/api/usage`) with the user's API key. No other host is contacted. |

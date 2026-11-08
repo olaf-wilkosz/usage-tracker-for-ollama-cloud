@@ -188,8 +188,9 @@ await test('real Free-account responses: meter, credits, models, recent hours, i
   assert.equal(data.meters[0].detail, '$1.94 of $2.50 left');
   assert.equal(data.meters[0].resetsAt, '2026-11-04T09:55:26.250918Z');
   assert.equal(data.credits.text, '$0');
-  assert.deepEqual(data.modelsByRange['30d'].map((m) => m.model), ['beam', 'nemotron-3-ultra', 'web_search']);
-  assert.deepEqual(data.modelsByRange['7d'].map((m) => [m.model, m.requests]), [['beam', 73], ['nemotron-3-ultra', 13], ['web_search', 9]]);
+  assert.deepEqual(data.modelsByRange['30d'].models.map((m) => m.model), ['beam', 'nemotron-3-ultra', 'web_search']);
+  assert.deepEqual(data.modelsByRange.month.models.map((m) => [m.model, m.requests]), [['beam', 73], ['nemotron-3-ultra', 13], ['web_search', 9]]);
+  assert.deepEqual([data.modelsByRange.month.from, data.modelsByRange.month.to], ['2026-11-01', '2026-11-08']);
   assert.equal(data.recentHours.length, 4);
   assert.equal(data.recentHours[0].from, '2026-11-02T18:00:00Z', 'newest first');
   assert.ok(store.ollamaDiagnostics.text.includes('"balance_usd":1.94111'));
@@ -206,7 +207,7 @@ await test('the 30-day series is reused for 10 minutes, then fetched again', asy
   await refresh();
   const urls = calls.slice(before).map((c) => c.url);
   assert.deepEqual(urls.sort(), ['https://ollama.com/api/balance', 'https://ollama.com/api/usage?range=24h&group_by=model'], 'balance + 24h only');
-  assert.equal(store.ollamaUsageData.modelsByRange['30d'].length, 3, 'models still come from the cached series');
+  assert.equal(store.ollamaUsageData.modelsByRange['30d'].models.length, 3, 'models still come from the cached series');
 
   store.ollamaMonthCache = { ...store.ollamaMonthCache, at: Date.now() - 11 * 60e3 };
   const stale = calls.length;

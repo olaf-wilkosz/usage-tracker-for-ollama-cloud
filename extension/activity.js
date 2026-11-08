@@ -22,6 +22,36 @@ export function hourKey(date) {
   return `${dayKey(date)}T${pad(date.getHours())}`;
 }
 
+/**
+ * Whether a local hour lies inside the periods the extension has actually read from the API
+ * (a cell outside them is "not recorded yet", not "zero requests"). No list = everything counts as known.
+ * @param {Array<[string, string]>|null} covered - [firstHourKey, lastHourKey] pairs
+ */
+export function isCovered(covered, key) {
+  return !covered || covered.some(([from, to]) => key >= from && key <= to);
+}
+
+function hourAfter(key) {
+  const [day, hour] = key.split('T');
+  const [y, m, d] = day.split('-').map(Number);
+  return hourKey(new Date(y, m - 1, d, Number(hour) + 1));
+}
+
+/** Merge overlapping or touching [from, to] hour-key pairs. */
+function mergeIntervals(intervals) {
+  const sorted = [...intervals].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  const merged = [];
+  for (const [from, to] of sorted) {
+    const last = merged.at(-1);
+    if (last && from <= hourAfter(last[1])) {
+      if (to > last[1]) last[1] = to;
+    } else {
+      merged.push([from, to]);
+    }
+  }
+  return merged;
+}
+
 /** Heat level 0 (none) .. 4 (busiest) for a value relative to the busiest cell. */
 export function heatLevel(value, max) {
   if (!(value > 0) || !(max > 0)) return 0;
@@ -34,7 +64,7 @@ export function heatLevel(value, max) {
  * @param {Date} [now]
  * @returns {{rows: Array<{date: Date, cells: Array<{hour: number, value: number, future: boolean}>}>, max: number, total: number}}
  */
-export function buildWeekGrid(buckets, now = new Date()) {
+export function buildWeekGrid(buckets, now = new Date(), covered = null) {
   const rows = [];
   let max = 0;
   let total = 0;
@@ -45,7 +75,7 @@ export function buildWeekGrid(buckets, now = new Date()) {
     for (let hour = 0; hour < 24; hour++) {
       const slot = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour);
       const value = buckets[hourKey(slot)] || 0;
-      cells.push({ hour, value, future: slot > now });
+      cells.push({ hour, value, future: slot > now, known: isCovered(covered, hourKey(slot)) });
       max = Math.max(max, value);
       total += value;
     }
@@ -62,7 +92,7 @@ export function buildWeekGrid(buckets, now = new Date()) {
  * @param {Object} [days] - requests per day as reported by the API
  * @returns {{rows: Array<{start: Date, cells: Array<{date: Date, value: number, future: boolean}>}>, max: number, total: number}}
  */
-export function buildMonthGrid(hours, now = new Date(), days = {}) {
+export function buildMonthGrid(hours, now = new Date(), days = {}, daysFrom = null) {
   const dayTotals = { ...days };
   const fromHours = {};
   for (const [key, value] of Object.entries(hours)) {
@@ -85,7 +115,7 @@ export function buildMonthGrid(hours, now = new Date(), days = {}) {
     for (let i = 0; i < 7; i++) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
       const value = dayTotals[dayKey(date)] || 0;
-      cells.push({ date, value, future: date > today });
+      cells.push({ date, value, future: date > today, known: !daysFrom || dayKey(date) >= daysFrom });
       max = Math.max(max, value);
       total += value;
     }
@@ -108,8 +138,26 @@ export function mergeActivity(stored, fresh, now = new Date()) {
   const cutoffDay = dayKey(cutoff);
   const prune = (series, cutoffKey) => Object.fromEntries(Object.entries(series).filter(([key]) => key >= cutoffKey));
 
-  return {
-    hours: prune({ ...stored?.hours, ...fresh.hours }, cutoffHour),
-    days: prune({ ...stored?.days, ...fresh.days }, cutoffDay)
-  };
+  const hours = prune({ ...stored?.hours, ...fresh.hours }, cutoffHour);
+  const days = prune({ ...stored?.days, ...fresh.days }, cutoffDay);
+  const result = { hours, days };
+
+  // Which hours / days the series really covers. Data stored before this was tracked is
+  // assumed to cover the span it spans.
+  let covered = stored?.covered;
+  if (!covered) {
+    const keys = Object.keys(stored?.hours ?? {}).sort();
+    covered = keys.length > 0 ? [[keys[0], keys.at(-1)]] : [];
+  }
+  if (fresh.coverage) {
+    result.covered = mergeIntervals([...covered, [fresh.coverage.hoursFrom, fresh.coverage.hoursTo]])
+      .filter(([, to]) => to >= cutoffHour)
+      .map(([from, to]) => [from < cutoffHour ? cutoffHour : from, to]);
+    const known = [stored?.daysFrom, fresh.coverage.daysFrom].filter(Boolean).sort();
+    if (known.length > 0) result.daysFrom = known[0] < cutoffDay ? cutoffDay : known[0];
+  } else if (stored?.covered) {
+    result.covered = stored.covered;
+    if (stored.daysFrom) result.daysFrom = stored.daysFrom;
+  }
+  return result;
 }

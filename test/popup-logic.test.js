@@ -30,6 +30,20 @@ test('buildLegendItems: more than 6 models fold the tail into one gray entry', (
   assert.equal(L.buildLegendItems(models.slice(0, 6)).length, 6, 'exactly 6 is not folded');
 });
 
+test('formatDayRange: like the date range on the usage page', () => {
+  assert.equal(L.formatDayRange('2026-11-01', '2026-11-08'), 'Nov 1–8');
+  assert.equal(L.formatDayRange('2026-11-09', '2026-11-09'), 'Nov 9');
+  assert.equal(L.formatDayRange('2026-10-10', '2026-11-09'), 'Oct 10 – Nov 9');
+  assert.equal(L.formatDayRange('2025-12-20', '2026-01-02'), 'Dec 20 – Jan 2');
+  assert.equal(L.formatDayRange(null, '2026-11-09'), '');
+});
+
+test('rangeEntry: accepts the current shape and the bare array an earlier version stored', () => {
+  assert.deepEqual(L.rangeEntry({ from: '2026-11-01', to: '2026-11-08', models: [{ model: 'a', requests: 1 }] }), { from: '2026-11-01', to: '2026-11-08', models: [{ model: 'a', requests: 1 }] });
+  assert.deepEqual(L.rangeEntry([{ model: 'a', requests: 1 }]), { from: null, to: null, models: [{ model: 'a', requests: 1 }] });
+  assert.deepEqual(L.rangeEntry(undefined), { from: null, to: null, models: [] });
+});
+
 test('summarizeActivity: the text twin of the heatmap', () => {
   assert.equal(L.summarizeActivity('week', 0, null), 'No requests in the last 7 days.');
   assert.equal(L.summarizeActivity('month', 126, { label: 'Wed, Nov 4', value: 60 }), '126 requests in the last 30 days. Busiest: Wed, Nov 4, 60 requests.');

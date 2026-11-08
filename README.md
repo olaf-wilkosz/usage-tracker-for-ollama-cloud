@@ -26,11 +26,12 @@ Credits, models and activity in one click, a live badge on the toolbar, and aler
 
 - **Live toolbar badge**: a ring and a percentage, green / orange / red. Several usage windows (legacy plans) show as concentric rings.
 - **Included and purchased credits**: what is left, when it refills, and your purchased balance.
-- **Models breakdown**: requests per model over the last 7 or 30 days (7 days by default, like the usage page on ollama.com), with share and cost on hover; the busiest recent hours.
+- **Models breakdown**: requests and cost per model for the calendar month so far (the default, exactly what the usage page on ollama.com shows), the last 7 days or the last 30 days; the busiest recent hours.
+- **Keyboard**: `Alt` + `Shift` + `U` opens the popup (changeable in the browser's extension shortcuts).
 - **Activity heatmap**: last week by hour, last 30 days by day.
 - **Alerts that don't nag**: warning and critical thresholds; one notification per cycle (again only on escalation or reset).
 - **Peak / off-peak banner**: Ollama's published pricing hours, computed locally.
-- **Accessible**: text and badge colors meet WCAG AA contrast, controls are labelled, and the heatmap comes with a text summary for screen readers. An automated axe-core audit (`npm run a11y`) covers the popup, the options page and the website.
+- **Accessible**: text and badge colors meet WCAG AA contrast, controls are labelled, and the heatmap comes with a text summary for screen readers. An automated axe-core audit (`npm run a11y`) covers the popup, the options page and the website; [docs/accessibility-testing.md](docs/accessibility-testing.md) is the manual keyboard and screen-reader script.
 
 ## Install
 

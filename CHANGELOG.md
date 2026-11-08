@@ -8,7 +8,9 @@
 - **Robustness:** last good numbers stay on screen (marked stale) when the API is briefly unreachable.
 - **Accessibility:** text and badge colors meet WCAG AA.
 - **Robustness:** a 429 is honoured (no requests until Retry-After has passed); the 30-day series is cached for 10 minutes (two calls per refresh instead of three); saving or removing the key during a refresh can no longer be overwritten by that refresh; the options page shows "Connected" only for a key Ollama accepts.
-- **Models range:** 7 days (default, matches the usage page on ollama.com) or 30 days, derived from the same daily data, no extra request.
+- **Models range:** the calendar month so far (UTC, default: it is exactly what the usage page on ollama.com shows, "Nov 1–8, UTC"), 7 days or 30 days, all derived from the same daily data with a date caption and total cost; no extra request.
+- **Heatmap:** cells that were never recorded (before the extension started, or while the browser was closed for more than a day) are hatched instead of looking like zero requests.
+- **Keyboard:** optional shortcut Alt+Shift+U opens the popup; manual keyboard / screen-reader test script in docs/accessibility-testing.md.
 - **First run:** the setup step opens in the popup right after install where the browser allows it (otherwise a welcome tab that shows only the connect step, then confirms "You're all set" and what to do next).
 - **Accessibility:** `lang` on all extension pages, pressed state on the range toggles, heatmap hidden from assistive technology and replaced by a text summary; `npm run a11y` (axe-core) added.
 - **Setup in the popup:** create-a-key link, paste field and Connect button right in the popup; a dismissible hint to pin the extension to the toolbar (shown only while it is not pinned). The title bar now reads "Usage Tracker for Ollama Cloud"; the footer links to ollama.com/settings/usage.

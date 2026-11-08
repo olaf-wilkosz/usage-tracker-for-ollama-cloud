@@ -34,6 +34,30 @@ export function buildLegendItems(models) {
   }];
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * "Nov 1–8" or "Oct 10 – Nov 9" for two YYYY-MM-DD UTC days, like the date range on ollama.com's usage page.
+ * @returns {string} empty when a day is missing
+ */
+export function formatDayRange(from, to) {
+  if (!from || !to) return '';
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  if (fy === ty && fm === tm) return fd === td ? `${MONTH_NAMES[fm - 1]} ${fd}` : `${MONTH_NAMES[fm - 1]} ${fd}–${td}`;
+  return `${MONTH_NAMES[fm - 1]} ${fd} – ${MONTH_NAMES[tm - 1]} ${td}`;
+}
+
+/**
+ * Rows of a models range. Data stored by an earlier version holds a bare array; the current
+ * shape is { from, to, models }.
+ * @returns {{from: string|null, to: string|null, models: Array}}
+ */
+export function rangeEntry(entry) {
+  if (Array.isArray(entry)) return { from: null, to: null, models: entry };
+  return { from: entry?.from ?? null, to: entry?.to ?? null, models: entry?.models ?? [] };
+}
+
 /**
  * The heatmap is visual only (aria-hidden); this sentence carries the same information as text.
  * @param {'week'|'month'} mode
