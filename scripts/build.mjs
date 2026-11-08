@@ -60,7 +60,12 @@ function build(target) {
     listFiles(out).sort().map((path) => [relative(out, path).replaceAll('\\', '/'), readFileSync(path)])
   );
   const zipPath = join(DIST, `${slug}-${manifest.version}-${target}.zip`);
-  writeFileSync(zipPath, zipSync(files, { level: 9, mtime: new Date('2026-01-01T00:00:00Z') }));
+  try {
+    writeFileSync(zipPath, zipSync(files, { level: 9, mtime: new Date('2026-01-01T00:00:00Z') }));
+  } catch (error) {
+    // Windows keeps a zip locked while a browser has it loaded as a temporary add-on
+    throw new Error(`Could not write ${relative(ROOT, zipPath)} (${error.code}): is a browser using that file? Remove it there and run the build again. The unpacked folder dist/${target} is up to date.`);
+  }
   console.log(`${target}: ${relative(ROOT, zipPath)} (${Object.keys(files).length} files, ${(statSync(zipPath).size / 1024).toFixed(1)} KB)`);
 }
 
