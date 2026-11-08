@@ -860,3 +860,16 @@ footer {
     --text-muted: #ccc;
   }
 }
+
+/* Text for assistive technology only (e.g. the heatmap summary) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

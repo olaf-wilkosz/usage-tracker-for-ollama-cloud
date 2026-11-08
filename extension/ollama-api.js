@@ -80,12 +80,17 @@ export async function apiGet(path, key) {
   }
 }
 
-/** Fetch everything one refresh needs. */
-export async function fetchApiData(key) {
+/**
+ * Fetch everything one refresh needs. The 30-day series only changes meaningfully a few
+ * times an hour, so the caller may pass a recent copy and save a third of the requests.
+ * @param {string} key
+ * @param {Object} [cachedMonth] - a previous /api/usage?range=30d response to reuse
+ */
+export async function fetchApiData(key, cachedMonth) {
   const [balance, day, month] = await Promise.all([
     apiGet('/balance', key),
     apiGet('/usage?range=24h&group_by=model', key),
-    apiGet('/usage?range=30d&group_by=model', key)
+    cachedMonth ?? apiGet('/usage?range=30d&group_by=model', key)
   ]);
   return { balance, day, month };
 }
@@ -143,6 +148,25 @@ function modelsFromTotals(totals) {
   return rows.filter((m) => m.requests > 0).sort((a, b) => b.requests - a.requests);
 }
 
+/** The API's 7d range is the last 8 daily buckets (7 days ago at 00:00 UTC up to today). */
+const SHORT_RANGE_DAYS = 8;
+
+/** Same rows as modelsFromTotals, summed from daily buckets (so the 7d view needs no extra request). */
+function modelsFromBuckets(buckets) {
+  const sums = new Map();
+  const add = (model, requests, cost) => {
+    const row = sums.get(model) ?? { model, requests: 0, cost: 0 };
+    row.requests += requests || 0;
+    row.cost += cost || 0;
+    sums.set(model, row);
+  };
+  for (const b of buckets) {
+    for (const g of b.groups ?? []) add(String(g.model), g.request_count, g.usage_usd);
+    if (b.remainder?.request_count > 0) add('other models', b.remainder.request_count, b.remainder.usage_usd);
+  }
+  return [...sums.values()].filter((m) => m.requests > 0).sort((a, b) => b.requests - a.requests);
+}
+
 /**
  * Turn the raw API responses into the extension's usage data (see usage.js).
  * @param {{balance: Object, day: Object, month: Object}} raw
@@ -173,8 +197,10 @@ export function buildUsage({ balance, day, month }) {
     status: 'ok',
     meters,
     credits,
-    modelsLabel: 'Models · last 30 days',
-    models: modelsFromTotals(month.totals),
+    modelsByRange: {
+      '7d': modelsFromBuckets(month.buckets.slice(-SHORT_RANGE_DAYS)),
+      '30d': modelsFromTotals(month.totals)
+    },
     recentHours
   };
 }

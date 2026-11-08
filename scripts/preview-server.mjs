@@ -101,8 +101,9 @@ function scenario(name, now = Date.now()) {
 
   switch (name) {
     case 'free': {
-      const delta = Math.floor((now - Date.parse('2026-11-03T14:39:55Z')) / DAY) * DAY;
-      const raw = shiftTimes({ balance: fixture('balance-free.json'), day: fixture('usage-24h-by-model.json'), month: fixture('usage-30d-by-model.json') }, delta);
+      // each response is moved by whole days relative to its own end, so hours and days stay aligned
+      const move = (data) => shiftTimes(data, Math.floor((now - Date.parse(data.until)) / DAY) * DAY);
+      const raw = { balance: shiftTimes(fixture('balance-free.json'), 0), day: move(fixture('usage-24h-by-model.json')), month: move(fixture('usage-30d-by-model.json')) };
       raw.balance.included.period.until = new Date(now + 19 * HOUR).toISOString();
       return finish(raw);
     }
@@ -123,8 +124,8 @@ function scenario(name, now = Date.now()) {
       const { data, activity } = finish(busyRaw(now));
       return { data: { ...data, status: 'network_error', stale: true, lastFetch: new Date(now - 26 * 60e3).toISOString() }, activity };
     }
-    case 'connect': return { data: { status: 'no_key', meters: [], credits: null, models: [], recentHours: [] }, activity: null };
-    case 'badkey': return { data: { status: 'auth_required', meters: [], credits: null, models: [], recentHours: [] }, activity: null };
+    case 'connect': return { data: { status: 'no_key', meters: [], credits: null, modelsByRange: { '7d': [], '30d': [] }, recentHours: [] }, activity: null };
+    case 'badkey': return { data: { status: 'auth_required', meters: [], credits: null, modelsByRange: { '7d': [], '30d': [] }, recentHours: [] }, activity: null };
     default: return { data: null, activity: null };
   }
 }

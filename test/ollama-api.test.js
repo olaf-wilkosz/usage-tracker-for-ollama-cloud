@@ -23,11 +23,29 @@ test('buildUsage: Free account from real responses', () => {
   assert.equal(m.resetVerb, 'Refills');
   assert.equal(m.resetsAt, '2026-11-04T09:55:26.250918Z');
   assert.deepEqual(u.credits, { amount: 0, text: '$0' });
-  assert.equal(u.modelsLabel, 'Models · last 30 days');
-  assert.deepEqual(u.models, [
-    { model: 'nemotron-3-ultra', requests: 41, cost: 0.4377 },
-    { model: 'web_search', requests: 28, cost: 0.19 }
+  assert.deepEqual(u.modelsByRange['30d'], [
+    { model: 'beam', requests: 73, cost: 0 },
+    { model: 'nemotron-3-ultra', requests: 34, cost: 0.3689 },
+    { model: 'web_search', requests: 19, cost: 0.19 }
   ]);
+});
+
+test('buildUsage: the 7-day models equal what the API reports for range=7d (real Free account, 2026-11-08)', () => {
+  const rows = Api.buildUsage(raw()).modelsByRange['7d'].map((m) => [m.model, m.requests, Math.round(m.cost * 1e4) / 1e4]);
+  // /api/usage?range=7d returned: beam 73 / $0, nemotron-3-ultra 13 / $0.1677, web_search 9 / $0.09 (95 requests)
+  assert.deepEqual(rows, [['beam', 73, 0], ['nemotron-3-ultra', 13, 0.1677], ['web_search', 9, 0.09]]);
+  assert.equal(rows.reduce((sum, r) => sum + r[1], 0), 95);
+});
+
+test('buildUsage: 7 days is the last 8 daily buckets, with per-day remainders folded in', () => {
+  const data = raw();
+  const last = data.month.buckets.at(-1);
+  last.remainder = { request_count: 2, usage_usd: 0.02 };
+  const week = Api.buildUsage(data).modelsByRange['7d'];
+  assert.deepEqual(week.at(-1), { model: 'other models', requests: 2, cost: 0.02 });
+  // the day before the window (2026-11-01 is its first day) must not leak in
+  data.month.buckets[data.month.buckets.length - 9].groups = [{ model: 'old-model', request_count: 5, usage_usd: 1 }];
+  assert.ok(!Api.buildUsage(data).modelsByRange['7d'].some((m) => m.model === 'old-model'));
 });
 
 test('buildUsage: recent hours are the non-empty hourly buckets, newest first', () => {
@@ -64,15 +82,16 @@ test('buildUsage: edge cases', () => {
   // the API folds models beyond its top 10 into `remainder`
   const rest = raw();
   rest.month.totals.remainder = { request_count: 3, usage_usd: 0.01, input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 };
-  assert.deepEqual(Api.buildUsage(rest).models.at(-1), { model: 'other models', requests: 3, cost: 0.01 });
+  assert.deepEqual(Api.buildUsage(rest).modelsByRange['30d'].at(-1), { model: 'other models', requests: 3, cost: 0.01 });
 
   // a brand-new account: nothing used yet
   const empty = raw();
   empty.day.buckets = empty.day.buckets.map((b) => ({ ...b, request_count: 0, groups: [] }));
   empty.month.totals = { request_count: 0 };
+  empty.month.buckets = empty.month.buckets.map((b) => ({ ...b, request_count: 0, groups: [] }));
   const u = Api.buildUsage(empty);
   assert.deepEqual(u.recentHours, []);
-  assert.deepEqual(u.models, []);
+  assert.deepEqual(u.modelsByRange, { '7d': [], '30d': [] });
 });
 
 test('buildUsage: unexpected shapes are schema errors, not crashes', () => {
@@ -94,7 +113,9 @@ test('extractActivity: hours (local) and days (UTC) with request counts', () => 
   const first = new Date('2026-11-02T14:00:00Z');
   const key = `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, '0')}-${String(first.getDate()).padStart(2, '0')}T${String(first.getHours()).padStart(2, '0')}`;
   assert.equal(hours[key], 16);
-  assert.deepEqual(days, { '2026-10-20': 5, '2026-10-27': 12, '2026-10-28': 30, '2026-11-02': 22 });
+  assert.equal(days['2026-11-04'], 60, 'busiest day of the real account');
+  assert.equal(days['2026-11-02'], 22);
+  assert.equal(Object.values(days).reduce((a, b) => a + b, 0), 126, 'equals the 30d total');
 });
 
 test('apiGet: maps HTTP failures to ApiError kinds and statuses', async () => {

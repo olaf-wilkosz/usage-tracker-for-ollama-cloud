@@ -18,6 +18,8 @@ jobs:
       - run: npm test
       - name: Release checks (versions, store limits, permissions, forbidden patterns)
         run: npm run check
+      - name: Accessibility audit (axe-core in the runner's Chrome)
+        run: npm run a11y
       - name: Build store packages
         run: npm run build
       - uses: actions/upload-artifact@v4

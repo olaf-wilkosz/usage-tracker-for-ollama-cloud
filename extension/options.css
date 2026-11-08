@@ -377,3 +377,34 @@ footer {
 #removeKeyBtn {
   width: 100%;
 }
+
+/* First run: nothing but the connect step, so there is only one thing to do */
+body.setup-only .only-when-connected {
+  display: none;
+}
+
+.done-notice {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius);
+  background: rgba(56, 142, 60, 0.15);
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.done-notice[hidden] {
+  display: none;
+}
+
+.done-notice strong {
+  color: #81c784;
+}
+
+.done-notice span {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}

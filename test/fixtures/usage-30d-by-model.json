@@ -3,27 +3,35 @@
   "scope": "self",
   "granularity": "day",
   "group_by": "model",
-  "from": "2026-10-04T00:00:00Z",
-  "until": "2026-11-04T00:00:00Z",
+  "from": "2026-10-09T00:00:00Z",
+  "until": "2026-11-08T22:47:34.386662623Z",
   "totals": {
-    "request_count": 69,
-    "usage_usd": 0.6277,
-    "input_tokens": 3450000,
+    "request_count": 126,
+    "usage_usd": 0.5589,
+    "input_tokens": 7964228,
     "cached_input_tokens": 0,
-    "output_tokens": 55200,
+    "output_tokens": 182272,
     "groups": [
       {
         "model": "nemotron-3-ultra",
-        "request_count": 41,
-        "usage_usd": 0.4377,
-        "input_tokens": 3450000,
+        "request_count": 34,
+        "usage_usd": 0.3689,
+        "input_tokens": 0,
         "cached_input_tokens": 0,
-        "output_tokens": 55200
+        "output_tokens": 0
       },
       {
         "model": "web_search",
-        "request_count": 28,
+        "request_count": 19,
         "usage_usd": 0.19,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0
+      },
+      {
+        "model": "beam",
+        "request_count": 73,
+        "usage_usd": 0,
         "input_tokens": 0,
         "cached_input_tokens": 0,
         "output_tokens": 0
@@ -31,56 +39,6 @@
     ]
   },
   "buckets": [
-    {
-      "from": "2026-10-04T00:00:00Z",
-      "until": "2026-10-05T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
-      "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
-    },
-    {
-      "from": "2026-10-05T00:00:00Z",
-      "until": "2026-10-06T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
-      "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
-    },
-    {
-      "from": "2026-10-06T00:00:00Z",
-      "until": "2026-10-07T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
-      "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
-    },
-    {
-      "from": "2026-10-07T00:00:00Z",
-      "until": "2026-10-08T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
-      "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
-    },
-    {
-      "from": "2026-10-08T00:00:00Z",
-      "until": "2026-10-09T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
-      "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
-    },
     {
       "from": "2026-10-09T00:00:00Z",
       "until": "2026-10-10T00:00:00Z",
@@ -134,22 +92,56 @@
     {
       "from": "2026-10-14T00:00:00Z",
       "until": "2026-10-15T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
+      "request_count": 9,
+      "usage_usd": 0.09,
+      "input_tokens": 540000,
       "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
+      "output_tokens": 8100,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 6,
+          "usage_usd": 0.06,
+          "input_tokens": 360000,
+          "cached_input_tokens": 0,
+          "output_tokens": 5400
+        },
+        {
+          "model": "web_search",
+          "request_count": 3,
+          "usage_usd": 0.03,
+          "input_tokens": 180000,
+          "cached_input_tokens": 0,
+          "output_tokens": 2700
+        }
+      ]
     },
     {
       "from": "2026-10-15T00:00:00Z",
       "until": "2026-10-16T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
+      "request_count": 12,
+      "usage_usd": 0.12,
+      "input_tokens": 720000,
       "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
+      "output_tokens": 10800,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 8,
+          "usage_usd": 0.08,
+          "input_tokens": 480000,
+          "cached_input_tokens": 0,
+          "output_tokens": 7200
+        },
+        {
+          "model": "web_search",
+          "request_count": 4,
+          "usage_usd": 0.04,
+          "input_tokens": 240000,
+          "cached_input_tokens": 0,
+          "output_tokens": 3600
+        }
+      ]
     },
     {
       "from": "2026-10-16T00:00:00Z",
@@ -194,22 +186,39 @@
     {
       "from": "2026-10-20T00:00:00Z",
       "until": "2026-10-21T00:00:00Z",
-      "request_count": 5,
-      "usage_usd": 0.06,
-      "input_tokens": 250000,
-      "cached_input_tokens": 0,
-      "output_tokens": 4000,
-      "groups": []
-    },
-    {
-      "from": "2026-10-21T00:00:00Z",
-      "until": "2026-10-22T00:00:00Z",
       "request_count": 0,
       "usage_usd": 0,
       "input_tokens": 0,
       "cached_input_tokens": 0,
       "output_tokens": 0,
       "groups": []
+    },
+    {
+      "from": "2026-10-21T00:00:00Z",
+      "until": "2026-10-22T00:00:00Z",
+      "request_count": 9,
+      "usage_usd": 0.0889,
+      "input_tokens": 540000,
+      "cached_input_tokens": 0,
+      "output_tokens": 8100,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 6,
+          "usage_usd": 0.0589,
+          "input_tokens": 360000,
+          "cached_input_tokens": 0,
+          "output_tokens": 5400
+        },
+        {
+          "model": "web_search",
+          "request_count": 3,
+          "usage_usd": 0.03,
+          "input_tokens": 180000,
+          "cached_input_tokens": 0,
+          "output_tokens": 2700
+        }
+      ]
     },
     {
       "from": "2026-10-22T00:00:00Z",
@@ -264,21 +273,21 @@
     {
       "from": "2026-10-27T00:00:00Z",
       "until": "2026-10-28T00:00:00Z",
-      "request_count": 12,
-      "usage_usd": 0.14,
-      "input_tokens": 600000,
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
       "cached_input_tokens": 0,
-      "output_tokens": 9600,
+      "output_tokens": 0,
       "groups": []
     },
     {
       "from": "2026-10-28T00:00:00Z",
       "until": "2026-10-29T00:00:00Z",
-      "request_count": 30,
-      "usage_usd": 0.21,
-      "input_tokens": 1500000,
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
       "cached_input_tokens": 0,
-      "output_tokens": 24000,
+      "output_tokens": 0,
       "groups": []
     },
     {
@@ -304,12 +313,21 @@
     {
       "from": "2026-10-31T00:00:00Z",
       "until": "2026-11-01T00:00:00Z",
-      "request_count": 0,
-      "usage_usd": 0,
-      "input_tokens": 0,
+      "request_count": 1,
+      "usage_usd": 0.0023,
+      "input_tokens": 60000,
       "cached_input_tokens": 0,
-      "output_tokens": 0,
-      "groups": []
+      "output_tokens": 900,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 1,
+          "usage_usd": 0.0023,
+          "input_tokens": 60000,
+          "cached_input_tokens": 0,
+          "output_tokens": 900
+        }
+      ]
     },
     {
       "from": "2026-11-01T00:00:00Z",
@@ -326,20 +344,124 @@
       "until": "2026-11-03T00:00:00Z",
       "request_count": 22,
       "usage_usd": 0.2577,
-      "input_tokens": 1100000,
+      "input_tokens": 1320000,
       "cached_input_tokens": 0,
-      "output_tokens": 17600,
-      "groups": []
+      "output_tokens": 19800,
+      "groups": [
+        {
+          "model": "nemotron-3-ultra",
+          "request_count": 13,
+          "usage_usd": 0.1677,
+          "input_tokens": 780000,
+          "cached_input_tokens": 0,
+          "output_tokens": 11700
+        },
+        {
+          "model": "web_search",
+          "request_count": 9,
+          "usage_usd": 0.09,
+          "input_tokens": 540000,
+          "cached_input_tokens": 0,
+          "output_tokens": 8100
+        }
+      ]
     },
     {
       "from": "2026-11-03T00:00:00Z",
       "until": "2026-11-04T00:00:00Z",
+      "request_count": 1,
+      "usage_usd": 0,
+      "input_tokens": 60000,
+      "cached_input_tokens": 0,
+      "output_tokens": 900,
+      "groups": [
+        {
+          "model": "beam",
+          "request_count": 1,
+          "usage_usd": 0,
+          "input_tokens": 60000,
+          "cached_input_tokens": 0,
+          "output_tokens": 900
+        }
+      ]
+    },
+    {
+      "from": "2026-11-04T00:00:00Z",
+      "until": "2026-11-05T00:00:00Z",
+      "request_count": 60,
+      "usage_usd": 0,
+      "input_tokens": 3600000,
+      "cached_input_tokens": 0,
+      "output_tokens": 54000,
+      "groups": [
+        {
+          "model": "beam",
+          "request_count": 60,
+          "usage_usd": 0,
+          "input_tokens": 3600000,
+          "cached_input_tokens": 0,
+          "output_tokens": 54000
+        }
+      ]
+    },
+    {
+      "from": "2026-11-05T00:00:00Z",
+      "until": "2026-11-06T00:00:00Z",
       "request_count": 0,
       "usage_usd": 0,
       "input_tokens": 0,
       "cached_input_tokens": 0,
       "output_tokens": 0,
       "groups": []
+    },
+    {
+      "from": "2026-11-06T00:00:00Z",
+      "until": "2026-11-07T00:00:00Z",
+      "request_count": 4,
+      "usage_usd": 0,
+      "input_tokens": 240000,
+      "cached_input_tokens": 0,
+      "output_tokens": 3600,
+      "groups": [
+        {
+          "model": "beam",
+          "request_count": 4,
+          "usage_usd": 0,
+          "input_tokens": 240000,
+          "cached_input_tokens": 0,
+          "output_tokens": 3600
+        }
+      ]
+    },
+    {
+      "from": "2026-11-07T00:00:00Z",
+      "until": "2026-11-08T00:00:00Z",
+      "request_count": 8,
+      "usage_usd": 0,
+      "input_tokens": 480000,
+      "cached_input_tokens": 0,
+      "output_tokens": 7200,
+      "groups": [
+        {
+          "model": "beam",
+          "request_count": 8,
+          "usage_usd": 0,
+          "input_tokens": 480000,
+          "cached_input_tokens": 0,
+          "output_tokens": 7200
+        }
+      ]
+    },
+    {
+      "from": "2026-11-08T00:00:00Z",
+      "until": "2026-11-09T00:00:00Z",
+      "request_count": 0,
+      "usage_usd": 0,
+      "input_tokens": 0,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "groups": [],
+      "partial": true
     }
   ]
 }

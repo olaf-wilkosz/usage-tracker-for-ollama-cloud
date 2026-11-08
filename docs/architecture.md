@@ -20,11 +20,21 @@ popup.js renders what is stored; it never talks to Ollama itself
 
 The popup and the options page only exchange messages with the worker (`GET_USAGE_DATA`, `SAVE_API_KEY`, ...). The API key exists in plain text only inside the worker, only while a request is being made.
 
+### Request budget
+
+The API allows 10 requests per minute per user, shared across keys and devices. A refresh makes three calls, but the 30-day series is reused for 10 minutes (it only moves a little within the day), so the steady state is two calls per refresh. A 429 stores `ollamaBackoffUntil` from `Retry-After` (capped at 10 minutes) and no request is made before then; the last good numbers stay on screen, marked stale.
+
+Saving or removing the key bumps an epoch counter; a refresh that was reading with the old key notices and starts over, so its stale result can never overwrite the new state.
+
 ### Usage data model
 
 `status` is one of `ok`, `no_key`, `auth_required` (401), `forbidden` (403), `rate_limited` (429), `network_error`, `api_error` (response did not match the documented schema). Transient failures (`network_error`, `rate_limited`, `api_error`) keep the previous numbers and set `stale: true`; `no_key` / `auth_required` / `forbidden` clear them.
 
 `meters[]` is generic on purpose: standard plans produce one meter (`included`, from `allowance_usd` and `balance_usd`, resets at `period.until`); legacy plans produce `session` and `weekly`. An account without included credits (pay as you go) produces no meter, only `credits`.
+
+### Models ranges
+
+`modelsByRange["30d"]` comes from the 30d response's totals; `["7d"]` is summed from its last 8 daily buckets (what the API's own `range=7d` returns: seven days ago at 00:00 UTC up to now), so no extra request is needed. A test pins this against a real `range=7d` response. The popup defaults to 7 days, which is also what ollama.com's usage page shows by default.
 
 ### Activity
 
@@ -61,7 +71,7 @@ Trade-offs accepted: the user must create an API key; per-request detail (the ol
 
 ## Accessibility
 
-Text and badge colors are checked against WCAG AA (4.5:1) by a unit test (`test/ollama-api.test.js`, "accessibility"). Ring and bar colors are graphics (3:1 needed, met). Heatmap cells and model swatches are decorative: values are always available as text or tooltips.
+Text and badge colors are checked against WCAG AA (4.5:1) by a unit test (`test/ollama-api.test.js`, "accessibility"). `npm run a11y` runs axe-core (WCAG 2.0/2.1/2.2 A + AA and best practices) against every popup state, the options page and the website in a headless browser. The heatmap grid is `aria-hidden` and replaced by a text summary (total and busiest cell); toggles expose `aria-pressed`; native `<details>` provides the FAQ disclosure semantics. Screen-reader and keyboard flows still need an occasional manual pass. Ring and bar colors are graphics (3:1 needed, met). Heatmap cells and model swatches are decorative: values are always available as text or tooltips.
 
 ## Testing
 

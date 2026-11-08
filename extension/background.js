@@ -17,10 +17,14 @@ const ACTIVITY_KEY = 'ollamaActivity'; // hourly + daily request counts for the 
 const NOTIFIED_KEY = 'ollamaNotified'; // per-meter notification state (no repeat alerts)
 const ERROR_COUNT_KEY = 'ollamaErrorCount'; // persisted: the service worker is restarted between alarms
 const API_KEY_KEY = 'ollamaApiKey'; // the API key, sealed (see secret-store.js)
+const MONTH_CACHE_KEY = 'ollamaMonthCache'; // last 30-day response, reused for MONTH_CACHE_MS
+const BACKOFF_KEY = 'ollamaBackoffUntil'; // epoch ms: after a 429 no request is made before this
 const ALARM_NAME = 'ollamaUsageRefresh';
 const DEFAULT_ICON_PATHS = { 16: 'icons/icon16.png', 32: 'icons/icon32.png', 48: 'icons/icon48.png', 128: 'icons/icon128.png' };
 const DEFAULT_TITLE = 'Usage Tracker for Ollama Cloud';
 
+const MONTH_CACHE_MS = 10 * 60 * 1000;
+const MAX_BACKOFF_MS = 10 * 60 * 1000;
 const MAX_CONSECUTIVE_ERRORS = 3;
 const MAX_ICON_RINGS = 3;
 const ICON_BACKGROUND = '#1a1b1e';
@@ -33,6 +37,7 @@ const TRANSIENT_STATUSES = new Set(['network_error', 'rate_limited', 'api_error'
 const NEEDS_KEY_STATUSES = new Set(['no_key', 'auth_required']);
 
 let refreshInFlight = null;
+let keyEpoch = 0; // bumped whenever the API key is saved or removed; a refresh that spans a change is discarded
 
 /**
  * Get current settings from storage
@@ -62,13 +67,27 @@ async function collectUsage() {
   const key = await loadApiKey();
   if (!key) return { data: emptyUsage('no_key') };
 
+  const stored = await chrome.storage.local.get([BACKOFF_KEY, MONTH_CACHE_KEY]);
+  const now = Date.now();
+  if (stored[BACKOFF_KEY] > now) {
+    // Ollama asked us to wait (429 Retry-After): no request until then
+    return { data: { ...emptyUsage('rate_limited'), lastFetch: new Date().toISOString() } };
+  }
+  const cache = stored[MONTH_CACHE_KEY];
+  const cachedMonth = cache && now - cache.at < MONTH_CACHE_MS ? cache.month : undefined;
+
   let raw;
   try {
-    raw = await fetchApiData(key);
-    return { data: { ...buildUsage(raw), lastFetch: new Date().toISOString() }, raw };
+    raw = await fetchApiData(key, cachedMonth);
+    const usage = buildUsage(raw); // validates the response before anything is cached
+    if (!cachedMonth) await chrome.storage.local.set({ [MONTH_CACHE_KEY]: { at: now, month: raw.month } });
+    return { data: { ...usage, lastFetch: new Date().toISOString() }, raw };
   } catch (error) {
     // Details stay out of the log: errors here carry no key, but keep the console quiet anyway
     console.warn('[background] Refresh failed:', error?.kind || 'unknown', error?.message);
+    if (error?.kind === 'rate_limited') {
+      await chrome.storage.local.set({ [BACKOFF_KEY]: now + Math.min(error.retryAfter * 1000, MAX_BACKOFF_MS) });
+    }
     return { data: { ...emptyUsage(statusForError(error)), lastFetch: new Date().toISOString() }, raw };
   }
 }
@@ -304,7 +323,10 @@ function refreshUsage() {
 async function doRefresh() {
   console.log('[background] Refreshing usage data...');
 
+  const epoch = keyEpoch;
   const collected = await collectUsage();
+  // The key was saved or removed while this read was running: what it read belongs to the old key
+  if (epoch !== keyEpoch) return doRefresh();
   let { data } = collected;
   const { raw } = collected;
 
@@ -351,15 +373,18 @@ async function saveApiKey(rawKey) {
     };
   }
 
+  await chrome.storage.local.remove([MONTH_CACHE_KEY, BACKOFF_KEY]);
   await chrome.storage.local.set({ [API_KEY_KEY]: await sealSecret(key), [ERROR_COUNT_KEY]: 0 });
+  keyEpoch++;
   await refreshUsage();
   return { success: true };
 }
 
 /** Forget the key and everything derived from it; the popup goes back to the setup prompt. */
 async function removeApiKey() {
-  await chrome.storage.local.remove([API_KEY_KEY, STORAGE_KEY, DIAGNOSTICS_KEY, NOTIFIED_KEY, ERROR_COUNT_KEY]);
+  await chrome.storage.local.remove([API_KEY_KEY, STORAGE_KEY, DIAGNOSTICS_KEY, NOTIFIED_KEY, ERROR_COUNT_KEY, MONTH_CACHE_KEY, BACKOFF_KEY]);
   await destroySealingKey();
+  keyEpoch++;
   const data = { ...emptyUsage('no_key'), lastFetch: new Date().toISOString() };
   await chrome.storage.local.set({ [STORAGE_KEY]: data });
   await updateBadge(data);
@@ -429,8 +454,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'GET_KEY_STATE') {
-    chrome.storage.local.get(API_KEY_KEY).then((stored) => {
-      sendResponse({ hasKey: Boolean(stored[API_KEY_KEY]) });
+    chrome.storage.local.get([API_KEY_KEY, STORAGE_KEY]).then((stored) => {
+      // status lets the pages tell "a key is stored" from "a key that works"
+      sendResponse({ hasKey: Boolean(stored[API_KEY_KEY]), status: stored[STORAGE_KEY]?.status ?? null });
     });
     return true;
   }
@@ -471,6 +497,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * Show the setup step: the popup where the browser opens it, else the welcome tab. Some
+ * browsers accept openPopup() and show nothing (no focused window), so where the popup
+ * can be queried it is checked.
+ */
+async function showSetup() {
+  try {
+    await chrome.action.openPopup();
+    if (chrome.runtime.getContexts) {
+      // Give a slow machine up to ~1.5 s to show it
+      let shown = false;
+      for (let attempt = 0; attempt < 5 && !shown; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        shown = (await chrome.runtime.getContexts({ contextTypes: ['POPUP'] })).length > 0;
+      }
+      if (!shown) throw new Error('The popup did not open');
+    }
+  } catch {
+    chrome.runtime.openOptionsPage();
+  }
+}
+
+/**
  * Initialize on install/update
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -486,10 +534,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Do initial fetch (shows the "!" setup badge until an API key is saved)
   await refreshUsage();
 
-  // First run: open the setup page, where the API key is created and pasted. The popup
-  // would close the moment the user switches to ollama.com to create the key.
+  // First run: show the setup step right away. The popup is the preferred place (it has the
+  // whole setup inline); browsers that refuse to open it without a click (Firefox, older
+  // Chrome) get a welcome tab with the same step instead.
   if (details.reason === 'install') {
-    chrome.runtime.openOptionsPage();
+    await showSetup();
   }
 });
 

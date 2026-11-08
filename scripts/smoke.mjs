@@ -83,6 +83,8 @@ async function openPage(path) {
   return { evaluate: async (expression) => { const r = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true }); return r.result.exceptionDetails ? "ERR " + JSON.stringify(r.result.exceptionDetails.exception?.description) : r.result.result.value; }, close: () => sock.close() };
 }
 
+await sleep(3000); // the worker polls up to ~1.5 s for the popup before it falls back to the welcome tab
+console.log("pages the browser opened on install:", JSON.stringify((await targets()).filter((t) => /(popup|options).html$/.test(t.url)).map((t) => t.url.split("/").pop())));
 const options = await openPage("options.html");
 console.log("options page title:", await options.evaluate("document.title"), "| version shown:", await options.evaluate("document.getElementById('version').textContent"));
 console.log("seal round trip (real IndexedDB + WebCrypto):", await options.evaluate(`(async () => {

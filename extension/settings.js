@@ -150,10 +150,42 @@ function sendToWorker(message, fallbackError) {
   });
 }
 
-/** Whether an API key is stored (the key itself is never readable from the pages). */
-export async function hasApiKey() {
-  const response = await sendToWorker({ type: 'GET_KEY_STATE' }, 'No response');
-  return Boolean(response.hasKey);
+/**
+ * A usable key: one is stored and Ollama has not rejected it ("no_key" also covers a stored
+ * key whose sealing key was lost).
+ * @param {{hasKey?: boolean, status?: string|null}} [state] - the worker's GET_KEY_STATE answer
+ */
+export function deriveConnected({ hasKey, status } = {}) {
+  return Boolean(hasKey) && status !== 'auth_required' && status !== 'no_key';
+}
+
+/** Whether the extension is connected with a working key (the key itself is never readable from the pages). */
+export async function isConnected() {
+  return deriveConnected(await sendToWorker({ type: 'GET_KEY_STATE' }, 'No response'));
+}
+
+/**
+ * Whether the extension is pinned to the toolbar: true / false when the browser can tell,
+ * null when it cannot (older browsers, missing API).
+ */
+export async function isPinnedToToolbar() {
+  try {
+    const settings = await chrome.action?.getUserSettings?.();
+    return typeof settings?.isOnToolbar === 'boolean' ? settings.isOnToolbar : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Show a message under a button for a few seconds (the page needs a .clear-status element). */
+export function showInlineStatus(node, message, isSuccess, hideAfterMs = 3000) {
+  node.textContent = message;
+  node.className = `clear-status ${isSuccess ? 'success' : 'error'}`;
+  node.hidden = false;
+
+  setTimeout(() => {
+    node.hidden = true;
+  }, hideAfterMs);
 }
 
 /**

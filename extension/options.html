@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Usage Tracker for Ollama Cloud - Options</title>
@@ -8,11 +8,17 @@
 <body>
   <div class="container">
     <header>
-      <h1>Options</h1>
-      <p class="subtitle">Configure Usage Tracker for Ollama Cloud</p>
+      <h1 id="pageTitle">Options</h1>
+      <p class="subtitle" id="pageSubtitle">Configure Usage Tracker for Ollama Cloud</p>
     </header>
 
     <main>
+      <div id="doneNotice" class="done-notice" role="status" hidden>
+        <strong>You're all set.</strong>
+        Your usage now appears when you click the extension icon in the browser toolbar. You can close this tab.
+        <span id="pinTip" hidden>Tip: pin the extension (extensions menu, then the pin) to keep the live badge in view.</span>
+      </div>
+
       <section class="settings-section" id="connectSection">
         <h2>Ollama account <span id="connectedPill" class="pill" hidden>Connected</span></h2>
         <p class="setting-description" id="connectIntro">The extension reads your usage through Ollama's official API, which needs an API key. It takes a minute:</p>
@@ -33,7 +39,7 @@
         <button id="removeKeyBtn" class="btn btn-secondary" type="button" hidden>Remove key from this browser</button>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section only-when-connected">
         <h2>Refresh Interval</h2>
         <p class="setting-description">How often to fetch usage data from Ollama. Minimum 1 minute to avoid rate limiting.</p>
         <div class="setting-control">
@@ -45,7 +51,7 @@
         </div>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section only-when-connected">
         <h2>Notification Thresholds</h2>
         <p class="setting-description">Show system notification when usage exceeds these percentages.</p>
 
@@ -81,7 +87,7 @@
         <p id="testNotifyStatus" class="clear-status hidden"></p>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section only-when-connected">
         <h2>Display</h2>
         <p class="setting-description">Peak / off-peak hours come from the pricing page at ollama.com/pricing (weekdays 12:00&ndash;18:00 UTC are peak) and are computed locally.</p>
         <div class="setting-row checkbox-row">
@@ -90,21 +96,21 @@
         </div>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section only-when-connected">
         <h2>Diagnostics</h2>
         <p class="setting-description">If the popup reports a problem with the Ollama API, copy the last responses it received (usage numbers and model names only - never your API key) to share when reporting it.</p>
         <button id="diagnosticsBtn" class="btn btn-secondary">Copy diagnostics</button>
         <p id="diagnosticsStatus" class="clear-status hidden"></p>
       </section>
 
-      <section class="settings-section danger-section">
+      <section class="settings-section danger-section only-when-connected">
         <h2>Data Management</h2>
         <p class="setting-description">Clear all locally stored usage data and reset the extension.</p>
         <button id="clearDataBtn" class="btn btn-danger">Clear All Local Data</button>
         <p id="clearStatus" class="clear-status hidden"></p>
       </section>
 
-      <section class="settings-section info-section">
+      <section class="settings-section info-section only-when-connected">
         <h2>About</h2>
         <p class="setting-description">
           Usage Tracker for Ollama Cloud v<span id="version"></span><br>
@@ -117,7 +123,7 @@
       </section>
     </main>
 
-    <footer>
+    <footer class="only-when-connected">
       <button id="saveBtn" class="btn btn-primary">Save Settings</button>
     </footer>
   </div>

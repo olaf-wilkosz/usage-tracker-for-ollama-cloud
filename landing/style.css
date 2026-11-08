@@ -192,7 +192,7 @@ summary {
 }
 summary::-webkit-details-marker { display: none; }
 summary::after {
-  content: ;
+  content: '';
   flex: none;
   width: 9px;
   height: 9px;

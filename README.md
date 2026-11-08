@@ -26,11 +26,11 @@ Credits, models and activity in one click, a live badge on the toolbar, and aler
 
 - **Live toolbar badge**: a ring and a percentage, green / orange / red. Several usage windows (legacy plans) show as concentric rings.
 - **Included and purchased credits**: what is left, when it refills, and your purchased balance.
-- **Models breakdown**: requests per model over the last 30 days, with share and cost on hover; the busiest recent hours.
+- **Models breakdown**: requests per model over the last 7 or 30 days (7 days by default, like the usage page on ollama.com), with share and cost on hover; the busiest recent hours.
 - **Activity heatmap**: last week by hour, last 30 days by day.
 - **Alerts that don't nag**: warning and critical thresholds; one notification per cycle (again only on escalation or reset).
 - **Peak / off-peak banner**: Ollama's published pricing hours, computed locally.
-- **Accessible**: text and badge colors meet WCAG AA contrast; the heatmap and model colors are decorative, never the only carrier of information.
+- **Accessible**: text and badge colors meet WCAG AA contrast, controls are labelled, and the heatmap comes with a text summary for screen readers. An automated axe-core audit (`npm run a11y`) covers the popup, the options page and the website.
 
 ## Install
 
@@ -90,6 +90,7 @@ npm run build       # dist/chrome, dist/firefox and both zips
 npm run preview     # popup and options page with sample data at http://localhost:8765/popup?scenario=busy
 npm run render      # re-render store screenshots and promo tiles
 npm run probe       # print what the API reports for YOUR account (needs OLLAMA_API_KEY) and check it for consistency
+npm run a11y         # axe-core audit of popup, options page and website (needs Edge, Chrome or Brave)
 npm run smoke -- "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"   # load the extension in a real browser
 ```
 

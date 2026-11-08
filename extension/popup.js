@@ -10,8 +10,9 @@
 import { formatResetTime, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
-  DEFAULT_SETTINGS
+  isPinnedToToolbar, showInlineStatus, DEFAULT_SETTINGS
 } from './settings.js';
+import { buildLegendItems, summarizeActivity } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
@@ -46,7 +47,11 @@ const elements = {
   creditsAmount: document.getElementById('creditsAmount'),
   creditsNote: document.getElementById('creditsNote'),
   modelsBlock: document.getElementById('modelsBlock'),
-  modelsHeading: document.getElementById('modelsHeading'),
+  modelsEmpty: document.getElementById('modelsEmpty'),
+  modelsLayout: document.getElementById('modelsLayout'),
+  modelsRange7Btn: document.getElementById('modelsRange7Btn'),
+  modelsRange30Btn: document.getElementById('modelsRange30Btn'),
+  activitySummary: document.getElementById('activitySummary'),
   modelsDonut: document.getElementById('modelsDonut'),
   modelsList: document.getElementById('modelsList'),
   activityGrid: document.getElementById('activityGrid'),
@@ -76,6 +81,8 @@ const elements = {
 let currentSettings = { ...DEFAULT_SETTINGS };
 let activityData = null;
 let activityMode = 'week';
+let modelsRange = '7d'; // default matches the 7-day view of ollama.com's own usage page
+let lastUsage = null;
 let settingsOpen = false;
 let pinHintWanted = false; // not pinned to the toolbar and not dismissed yet
 let setupNeeded = false; // no API key yet (or it was rejected): the setup prompt replaces the usage view
@@ -223,34 +230,10 @@ function renderCredits(credits) {
   elements.creditsBlock.hidden = false;
 }
 
-const MAX_LEGEND_ROWS = 6;
-const OTHERS_COLOR = '#8a8a8a';
 const DONUT_MIN_PX = 96;
 const DONUT_MAX_PX = 128;
 const DONUT_PX_PER_ROW = 28;
 const RECENT_SHOWN = 5;
-
-/**
- * Legend/donut entries from the model breakdown, busiest first. With more than
- * MAX_LEGEND_ROWS models the tail is folded into one "N other models" entry, so the legend
- * (and the popup) stays a bounded height however many models were used.
- * @param {Array<{model: string, requests: number, cost?: number}>} models - sorted by requests, descending
- * @returns {Array<{label: string, requests: number, cost: number, color: string, members: string|null}>}
- */
-function buildLegendItems(models) {
-  const items = models.map(({ model, requests, cost }) => ({ label: model, requests, cost: cost || 0, color: modelColor(model), members: null }));
-  if (items.length <= MAX_LEGEND_ROWS) return items;
-
-  const head = items.slice(0, MAX_LEGEND_ROWS - 1);
-  const rest = items.slice(MAX_LEGEND_ROWS - 1);
-  return [...head, {
-    label: `${rest.length} other models`,
-    requests: rest.reduce((sum, m) => sum + m.requests, 0),
-    cost: rest.reduce((sum, m) => sum + m.cost, 0),
-    color: OTHERS_COLOR,
-    members: rest.map((m) => `${m.label}: ${m.requests}`).join('\n')
-  }];
-}
 
 /**
  * Model breakdown donut: one arc per entry in its Ollama color, total requests in the
@@ -344,22 +327,49 @@ function renderRecent(hours) {
   }
 }
 
-function renderModels(data) {
-  const sorted = [...(data.models || [])].sort((a, b) => b.requests - a.requests);
-  const total = sorted.reduce((sum, m) => sum + m.requests, 0);
+const RANGE_NAMES = { '7d': 'last 7 days', '30d': 'last 30 days' };
 
-  if (total <= 0) {
+function renderModels(data) {
+  const byRange = data.modelsByRange || {};
+  const total = (list) => (list || []).reduce((sum, m) => sum + m.requests, 0);
+
+  // Nothing in either range: nothing to show at all
+  if (total(byRange['7d']) <= 0 && total(byRange['30d']) <= 0) {
     elements.modelsBlock.hidden = true;
     return;
   }
-  elements.modelsHeading.textContent = data.modelsLabel || 'Models used';
+  elements.modelsBlock.hidden = false;
+
+  const sorted = [...(byRange[modelsRange] || [])].sort((a, b) => b.requests - a.requests);
+  const sum = total(sorted);
+  elements.modelsRange7Btn.classList.toggle('active', modelsRange === '7d');
+  elements.modelsRange30Btn.classList.toggle('active', modelsRange === '30d');
+  elements.modelsRange7Btn.setAttribute('aria-pressed', String(modelsRange === '7d'));
+  elements.modelsRange30Btn.setAttribute('aria-pressed', String(modelsRange === '30d'));
+
+  elements.modelsEmpty.hidden = sum > 0;
+  elements.modelsLayout.hidden = sum <= 0;
+  if (sum <= 0) {
+    elements.modelsEmpty.textContent = `No requests in the ${RANGE_NAMES[modelsRange]}.`;
+    return;
+  }
+
   const items = buildLegendItems(sorted);
   // The donut grows with the legend so a long list doesn't leave a hole under a small ring
   const donutPx = Math.max(DONUT_MIN_PX, Math.min(DONUT_MAX_PX, items.length * DONUT_PX_PER_ROW));
   elements.modelsDonut.style.width = elements.modelsDonut.style.height = `${donutPx}px`;
-  renderDonut(elements.modelsDonut, items, total);
-  renderModelList(elements.modelsList, items, total);
-  elements.modelsBlock.hidden = false;
+  renderDonut(elements.modelsDonut, items, sum);
+  renderModelList(elements.modelsList, items, sum);
+}
+
+async function setModelsRange(range) {
+  modelsRange = range;
+  if (lastUsage) renderModels(lastUsage);
+  try {
+    await chrome.storage.local.set({ ollamaModelsRange: range });
+  } catch {
+    // preference is optional
+  }
 }
 
 /** Shared activity cell: level class + tooltip. */
@@ -378,6 +388,8 @@ function renderActivity() {
   const describe = (value) => `${Math.round(value)} request${Math.round(value) === 1 ? '' : 's'}`;
 
   let total;
+  let busiest = null; // { label, value } of the busiest cell, for the text summary
+  const consider = (label, value) => { if (value > 0 && (!busiest || value > busiest.value)) busiest = { label, value }; };
   if (activityMode === 'week') {
     const week = buildWeekGrid(hours);
     total = week.total;
@@ -390,6 +402,7 @@ function renderActivity() {
       grid.appendChild(el('div', 'hm-label', date.toLocaleDateString(undefined, { weekday: 'short' })));
       for (const cell of cells) {
         const when = `${date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${String(cell.hour).padStart(2, '0')}:00`;
+        consider(when, cell.value);
         grid.appendChild(heatCell(cell.value, week.max, `${when} – ${describe(cell.value)}`, cell.future));
       }
     }
@@ -405,11 +418,13 @@ function renderActivity() {
       grid.appendChild(el('div', 'hm-label', start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })));
       for (const cell of cells) {
         const when = cell.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        consider(when, cell.value);
         grid.appendChild(heatCell(cell.value, month.max, `${when} – ${describe(cell.value)}`, cell.future));
       }
     }
   }
 
+  elements.activitySummary.textContent = summarizeActivity(activityMode, total, busiest);
   elements.activityNote.textContent = activityMode === 'week'
     ? (total > 0
       ? 'Hourly detail covers the last 24 h and builds up while your browser is running.'
@@ -421,6 +436,8 @@ function setActivityMode(mode) {
   activityMode = mode;
   elements.activityWeekBtn.classList.toggle('active', mode === 'week');
   elements.activityMonthBtn.classList.toggle('active', mode === 'month');
+  elements.activityWeekBtn.setAttribute('aria-pressed', String(mode === 'week'));
+  elements.activityMonthBtn.setAttribute('aria-pressed', String(mode === 'month'));
   renderActivity();
 }
 
@@ -521,11 +538,11 @@ async function submitKey() {
 /** The live badge is only visible when the extension is pinned; hint at it once, if it is not. */
 async function checkPinHint() {
   try {
-    const settings = await chrome.action?.getUserSettings?.();
     const { ollamaPinHintDismissed } = await chrome.storage.local.get('ollamaPinHintDismissed');
-    pinHintWanted = settings?.isOnToolbar === false && !ollamaPinHintDismissed;
+    // null = the browser cannot tell: no hint
+    pinHintWanted = (await isPinnedToToolbar()) === false && !ollamaPinHintDismissed;
   } catch {
-    pinHintWanted = false; // API missing (older browser): no hint
+    pinHintWanted = false;
   }
   elements.pinHint.hidden = !pinHintWanted || setupNeeded;
 }
@@ -534,13 +551,17 @@ async function checkPinHint() {
  * Render usage data in the popup
  */
 function renderUsage(data) {
+  lastUsage = data;
   const needsKey = !data || data.status === 'no_key' || data.status === 'auth_required';
 
+  const enteringSetup = needsKey && !setupNeeded;
   setupNeeded = needsKey;
   elements.connectBlock.hidden = !needsKey;
   updatePeakBanner();
   if (needsKey) {
     elements.connectText.textContent = CONNECT_TEXT[data?.status] || CONNECT_TEXT.no_key;
+    // Only on the way in: the worker re-renders on every refresh and must not pull focus back
+    if (enteringSetup && !settingsOpen) elements.apiKeyInput.focus();
     hideStatus();
     elements.pinHint.hidden = true;
     elements.metersContainer.textContent = '';
@@ -638,16 +659,6 @@ function showSaveStatus(message, isSuccess) {
   }, 2000);
 }
 
-function showInlineStatus(node, message, isSuccess, hideAfterMs = 3000) {
-  node.textContent = message;
-  node.className = `clear-status ${isSuccess ? 'success' : 'error'}`;
-  node.hidden = false;
-
-  setTimeout(() => {
-    node.hidden = true;
-  }, hideAfterMs);
-}
-
 /**
  * The header stays put between views; only its title and icons change (usage view: plan
  * badge + refresh + gear; settings view: "Settings" + close) so the layout never jumps.
@@ -687,10 +698,11 @@ async function init() {
   const [data, settings, stored] = await Promise.all([
     loadUsageData(),
     loadSettings(),
-    chrome.storage.local.get('ollamaActivity')
+    chrome.storage.local.get(['ollamaActivity', 'ollamaModelsRange'])
   ]);
   currentSettings = settings;
   activityData = stored.ollamaActivity || null;
+  if (stored.ollamaModelsRange === '7d' || stored.ollamaModelsRange === '30d') modelsRange = stored.ollamaModelsRange;
 
   await checkPinHint();
   renderUsage(data);
@@ -701,6 +713,8 @@ async function init() {
     updatePeakBanner();
   }, COUNTDOWN_REFRESH_MS);
 
+  elements.modelsRange7Btn.addEventListener('click', () => setModelsRange('7d'));
+  elements.modelsRange30Btn.addEventListener('click', () => setModelsRange('30d'));
   elements.activityWeekBtn.addEventListener('click', () => setActivityMode('week'));
   elements.activityMonthBtn.addEventListener('click', () => setActivityMode('month'));
 

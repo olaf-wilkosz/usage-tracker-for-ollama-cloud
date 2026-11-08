@@ -78,6 +78,7 @@ globalThis.OffscreenCanvas = class {
 let world = { ...FREE };   // what the API currently returns
 let failWith = null;       // { status, headers } or 'network' to fail every call
 let validKey = API_KEY;    // the key the API accepts
+let gate = null;           // when set, API calls wait for it (to hold a refresh in flight)
 const calls = [];
 
 const respond = (status, body, headers = {}) => ({
@@ -87,6 +88,7 @@ const respond = (status, body, headers = {}) => ({
 });
 globalThis.fetch = async (url, init) => {
   calls.push({ url, init });
+  if (gate) await gate;
   if (failWith === 'network') throw new TypeError('Failed to fetch');
   if (init.headers.Authorization !== `Bearer ${validKey}`) return respond(401, { error: 'unauthorized' });
   if (failWith) return respond(failWith.status, { error: 'failure' }, failWith.headers);
@@ -115,14 +117,36 @@ await test('before setup: refresh reports no_key and the toolbar nudges to conne
   assert.equal(badge.textColor, '#1a1a1a');
   assert.match(titles.at(-1), /connect your Ollama account/);
   assert.equal(store.ollamaErrorCount, 0, 'not set up is not an error');
-  assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false });
+  assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false, status: 'no_key' });
 });
 
-await test('first install opens the setup page', async () => {
+await test('first install: setup opens in the popup when the browser allows it, else as a welcome tab', async () => {
+  // no action.openPopup in the stub (like Firefox, which refuses it without a click): welcome tab
   await handlers.installed({ reason: 'install' });
   assert.equal(openedOptions, 1);
   await handlers.installed({ reason: 'update' });
   assert.equal(openedOptions, 1, 'updates do not');
+
+  let popups = 0;
+  chrome.action.openPopup = async () => { popups++; };
+  await handlers.installed({ reason: 'install' });
+  assert.equal(popups, 1);
+  assert.equal(openedOptions, 1, 'no extra tab when the popup opened');
+
+  chrome.action.openPopup = async () => { throw new Error('No active browser window'); };
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 2, 'refused popup falls back to the tab');
+
+  // accepted but nothing appeared (no focused window): where the popup can be queried, fall back too
+  chrome.runtime.getContexts = async () => [];
+  chrome.action.openPopup = async () => { popups++; };
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 3, 'a popup that never showed up falls back to the tab');
+  chrome.runtime.getContexts = async () => [{}];
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 3, 'a visible popup does not');
+  delete chrome.runtime.getContexts;
+  delete chrome.action.openPopup;
 });
 
 await test('saving a key: format check, rejected key, then accepted and sealed', async () => {
@@ -138,7 +162,7 @@ await test('saving a key: format check, rejected key, then accepted and sealed',
   assert.deepEqual(accepted, { success: true });
   assert.ok(store.ollamaApiKey.ct, 'sealed blob stored');
   assert.ok(!JSON.stringify(store).includes(API_KEY), 'the key is nowhere in storage in the clear');
-  assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: true });
+  assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: true, status: 'ok' });
 });
 
 await test('requests go to the three API endpoints with the key and without cookies', async () => {
@@ -164,7 +188,8 @@ await test('real Free-account responses: meter, credits, models, recent hours, i
   assert.equal(data.meters[0].detail, '$1.94 of $2.50 left');
   assert.equal(data.meters[0].resetsAt, '2026-11-04T09:55:26.250918Z');
   assert.equal(data.credits.text, '$0');
-  assert.deepEqual(data.models.map((m) => m.model), ['nemotron-3-ultra', 'web_search']);
+  assert.deepEqual(data.modelsByRange['30d'].map((m) => m.model), ['beam', 'nemotron-3-ultra', 'web_search']);
+  assert.deepEqual(data.modelsByRange['7d'].map((m) => [m.model, m.requests]), [['beam', 73], ['nemotron-3-ultra', 13], ['web_search', 9]]);
   assert.equal(data.recentHours.length, 4);
   assert.equal(data.recentHours[0].from, '2026-11-02T18:00:00Z', 'newest first');
   assert.ok(store.ollamaDiagnostics.text.includes('"balance_usd":1.94111'));
@@ -176,11 +201,24 @@ await test('real Free-account responses: meter, credits, models, recent hours, i
   assert.deepEqual(badge, { text: '22', color: '#2e7d32', textColor: '#ffffff' });
 });
 
+await test('the 30-day series is reused for 10 minutes, then fetched again', async () => {
+  const before = calls.length;
+  await refresh();
+  const urls = calls.slice(before).map((c) => c.url);
+  assert.deepEqual(urls.sort(), ['https://ollama.com/api/balance', 'https://ollama.com/api/usage?range=24h&group_by=model'], 'balance + 24h only');
+  assert.equal(store.ollamaUsageData.modelsByRange['30d'].length, 3, 'models still come from the cached series');
+
+  store.ollamaMonthCache = { ...store.ollamaMonthCache, at: Date.now() - 11 * 60e3 };
+  const stale = calls.length;
+  await refresh();
+  assert.ok(calls.slice(stale).some((c) => c.url.includes('range=30d')), 'refetched once the copy is older than 10 minutes');
+});
+
 await test('activity: hourly requests from the 24h reading, daily totals from the 30d reading', async () => {
   const { hours, days } = store.ollamaActivity;
   assert.equal(Object.values(hours).reduce((a, b) => a + b, 0), 22);
   assert.equal(days['2026-11-02'], 22);
-  assert.equal(days['2026-10-28'], 30);
+  assert.equal(days['2026-11-04'], 60);
   const before = JSON.stringify(store.ollamaActivity);
   await refresh();
   assert.equal(JSON.stringify(store.ollamaActivity), before, 'reading again does not double count');
@@ -266,14 +304,32 @@ await test('network trouble keeps the last good data (flagged stale); persistent
   assert.equal(store.ollamaErrorCount, 0);
 });
 
-await test('rate limit (429) and server errors are transient', async () => {
+await test('rate limit (429): last data stays, no request is made until Retry-After has passed', async () => {
   failWith = { status: 429, headers: { 'Retry-After': '30' } };
   await refresh();
   assert.equal(store.ollamaUsageData.status, 'rate_limited');
   assert.equal(store.ollamaUsageData.stale, true);
+  const wait = store.ollamaBackoffUntil - Date.now();
+  assert.ok(wait > 25e3 && wait <= 30e3, 'backoff of about 30 s: ' + wait);
+
+  failWith = null;
+  const before = calls.length;
+  await refresh();
+  assert.equal(calls.length, before, 'nothing is sent while backing off');
+  assert.equal(store.ollamaUsageData.status, 'rate_limited');
+  assert.equal(store.ollamaUsageData.stale, true);
+
+  store.ollamaBackoffUntil = Date.now() - 1; // Retry-After elapsed
+  await refresh();
+  assert.equal(store.ollamaUsageData.status, 'ok');
+  assert.ok(calls.length > before);
+});
+
+await test('server errors (503) are transient too', async () => {
   failWith = { status: 503, headers: {} };
   await refresh();
   assert.equal(store.ollamaUsageData.status, 'network_error');
+  assert.ok(!(store.ollamaBackoffUntil > Date.now()), 'only 429 backs off');
   failWith = null;
   await refresh();
   assert.equal(store.ollamaUsageData.status, 'ok');
@@ -338,7 +394,7 @@ await test('removing the key forgets it and everything read with it, but keeps s
   assert.equal(store.ollamaDiagnostics, undefined);
   assert.ok(store.settings && store.ollamaActivity);
   assert.equal(badge.text, '!');
-  assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false });
+  assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false, status: 'no_key' });
 
   const callsBefore = calls.length;
   await refresh();
@@ -352,4 +408,36 @@ await test('CLEAR_DATA wipes storage and resets icon', async () => {
   assert.equal(sealingKey, null);
   assert.ok(icons.at(-1).path);
   assert.equal(titles.at(-1), 'Usage Tracker for Ollama Cloud');
+});
+
+await test('removing the key while a refresh is in flight: the stale result is discarded', async () => {
+  assert.deepEqual(await send({ type: 'SAVE_API_KEY', key: validKey }), { success: true });
+  assert.equal(store.ollamaUsageData.status, 'ok');
+
+  let release;
+  gate = new Promise((resolve) => { release = resolve; });
+  const inFlight = send({ type: 'FORCE_REFRESH' });       // held inside the API calls with the old key
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  await send({ type: 'REMOVE_API_KEY' });
+  gate = null;
+  release();
+  await inFlight;
+
+  assert.equal(store.ollamaUsageData.status, 'no_key', 'the old key\'s data must not come back');
+  assert.equal(store.ollamaApiKey, undefined);
+  assert.equal(badge.text, '!');
+});
+
+await test('saving a key while a refresh without a key runs: data of the new key ends up shown', async () => {
+  let release;
+  gate = new Promise((resolve) => { release = resolve; });
+  // a refresh with no key never calls the API, so hold the save's own validation call instead
+  const saving = send({ type: 'SAVE_API_KEY', key: validKey });
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const alarm = send({ type: 'FORCE_REFRESH' });           // no key stored yet: reports no_key
+  gate = null;
+  release();
+  await Promise.all([saving, alarm]);
+  assert.equal(store.ollamaUsageData.status, 'ok');
+  assert.equal(badge.text, '22');
 });

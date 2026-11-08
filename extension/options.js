@@ -5,7 +5,7 @@
 
 import {
   DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
-  sendTestNotification, hasApiKey, saveApiKey, removeApiKey
+  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, saveApiKey, removeApiKey
 } from './settings.js';
 
 // DOM elements
@@ -19,6 +19,10 @@ const elements = {
   removeKeyBtn: document.getElementById('removeKeyBtn'),
   keyStatus: document.getElementById('keyStatus'),
   version: document.getElementById('version'),
+  pageTitle: document.getElementById('pageTitle'),
+  pageSubtitle: document.getElementById('pageSubtitle'),
+  doneNotice: document.getElementById('doneNotice'),
+  pinTip: document.getElementById('pinTip'),
   refreshInterval: document.getElementById('refreshInterval'),
   notifyWarning: document.getElementById('notifyWarning'),
   notifyCritical: document.getElementById('notifyCritical'),
@@ -58,19 +62,6 @@ function collectSettings() {
 }
 
 /**
- * Show an inline status message under a button (auto-hides)
- */
-function showInlineStatus(node, message, isSuccess, hideAfterMs = 3000) {
-  node.textContent = message;
-  node.className = `clear-status ${isSuccess ? 'success' : 'error'}`;
-  node.hidden = false;
-
-  setTimeout(() => {
-    node.hidden = true;
-  }, hideAfterMs);
-}
-
-/**
  * Show save status on button
  */
 function showSaveStatus(message, isSuccess) {
@@ -88,7 +79,7 @@ function showSaveStatus(message, isSuccess) {
  * Switch the account section between first-time setup and "connected" (replace / remove).
  */
 async function syncKeyState() {
-  const connected = await hasApiKey();
+  const connected = await isConnected();
   elements.connectedPill.hidden = !connected;
   elements.connectIntro.hidden = connected;
   elements.connectSteps.hidden = connected;
@@ -96,6 +87,18 @@ async function syncKeyState() {
   elements.apiKeyLabel.textContent = connected ? 'Replace API key' : 'API key';
   elements.apiKeyInput.placeholder = connected ? 'Paste a new key to replace the current one' : 'Paste your Ollama API key';
   elements.saveKeyBtn.textContent = connected ? 'Replace' : 'Connect';
+
+  // Not connected yet: a welcome page with the connect step only; the settings appear once it works
+  document.body.classList.toggle('setup-only', !connected);
+  elements.pageTitle.textContent = connected ? 'Options' : 'Welcome';
+  elements.pageSubtitle.textContent = connected ? 'Configure Usage Tracker for Ollama Cloud' : 'Connect your Ollama account to start tracking your usage';
+}
+
+/** After a successful connect: say what happens next, and hint at pinning if the extension is not pinned. */
+async function showDoneNotice() {
+  elements.pinTip.hidden = (await isPinnedToToolbar()) !== false;
+  elements.doneNotice.hidden = false;
+  elements.doneNotice.scrollIntoView({ block: 'nearest' });
 }
 
 /**
@@ -113,11 +116,13 @@ async function init() {
 
     if (result.success) {
       elements.apiKeyInput.value = ''; // the key is never shown again
-      showInlineStatus(elements.keyStatus, 'Connected. You can close this tab and open the extension from the toolbar.', true, 8000);
+      elements.keyStatus.hidden = true;
+      await syncKeyState();
+      await showDoneNotice();
     } else {
       showInlineStatus(elements.keyStatus, result.error, false, 8000);
+      await syncKeyState();
     }
-    await syncKeyState();
   });
   elements.apiKeyInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') elements.saveKeyBtn.click();

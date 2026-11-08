@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Usage Tracker for Ollama Cloud</title>
@@ -86,8 +86,15 @@
       </section>
 
       <section id="modelsBlock" class="usage-block" hidden>
-        <div id="modelsHeading" class="block-heading">Models used</div>
-        <div class="models-layout">
+        <div class="block-heading-row">
+          <span id="modelsHeading" class="block-heading">Models</span>
+          <div class="seg-toggle" role="group" aria-label="Models range">
+            <button id="modelsRange7Btn" class="seg-btn active" type="button" aria-pressed="true">7 days</button>
+            <button id="modelsRange30Btn" class="seg-btn" type="button" aria-pressed="false">30 days</button>
+          </div>
+        </div>
+        <p id="modelsEmpty" class="empty-note" hidden></p>
+        <div id="modelsLayout" class="models-layout">
           <div id="modelsDonut" class="donut"></div>
           <ul id="modelsList" class="model-list"></ul>
         </div>
@@ -105,11 +112,12 @@
         <div class="block-heading-row">
           <span class="block-heading">Activity</span>
           <div class="seg-toggle" role="group" aria-label="Activity range">
-            <button id="activityWeekBtn" class="seg-btn active" type="button">Week</button>
-            <button id="activityMonthBtn" class="seg-btn" type="button">Month</button>
+            <button id="activityWeekBtn" class="seg-btn active" type="button" aria-pressed="true">Week</button>
+            <button id="activityMonthBtn" class="seg-btn" type="button" aria-pressed="false">Month</button>
           </div>
         </div>
-        <div id="activityGrid" class="heatmap"></div>
+        <div id="activityGrid" class="heatmap" aria-hidden="true"></div>
+        <p id="activitySummary" class="sr-only"></p>
         <div id="activityNote" class="activity-note"></div>
       </section>
 
