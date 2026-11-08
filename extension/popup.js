@@ -9,7 +9,8 @@
 
 import { formatResetTime, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
-  loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, DEFAULT_SETTINGS
+  loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
+  DEFAULT_SETTINGS
 } from './settings.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
@@ -32,6 +33,10 @@ const elements = {
   connectBlock: document.getElementById('connectBlock'),
   connectText: document.getElementById('connectText'),
   connectBtn: document.getElementById('connectBtn'),
+  apiKeyInput: document.getElementById('apiKeyInput'),
+  connectStatus: document.getElementById('connectStatus'),
+  pinHint: document.getElementById('pinHint'),
+  pinHintClose: document.getElementById('pinHintClose'),
   manageKeyBtn: document.getElementById('manageKeyBtn'),
   peakBanner: document.getElementById('peakBanner'),
   peakTitle: document.getElementById('peakTitle'),
@@ -72,6 +77,7 @@ let currentSettings = { ...DEFAULT_SETTINGS };
 let activityData = null;
 let activityMode = 'week';
 let settingsOpen = false;
+let pinHintWanted = false; // not pinned to the toolbar and not dismissed yet
 let setupNeeded = false; // no API key yet (or it was rejected): the setup prompt replaces the usage view
 
 /** Create an element with an optional class and text. */
@@ -486,13 +492,42 @@ const STATUS_MESSAGES = {
 };
 
 const CONNECT_TEXT = {
-  no_key: 'The tracker reads your usage through Ollama\u2019s official API and needs an API key. Setup takes a minute.',
-  auth_required: 'Ollama rejected the saved API key (revoked or replaced?). Paste a new one to continue.'
+  no_key: 'The tracker reads your usage through Ollama\u2019s official API and needs an API key. It takes a minute.',
+  auth_required: 'Ollama rejected the saved API key (revoked or replaced?). Create a new one and paste it here.'
 };
 
-function openSetup() {
+function openOptions() {
   chrome.runtime.openOptionsPage();
   window.close();
+}
+
+/** Check the key with Ollama and store it; the worker then refreshes and the popup re-renders. */
+async function submitKey() {
+  elements.connectBtn.disabled = true;
+  elements.connectBtn.textContent = 'Checking...';
+  const result = await saveApiKey(elements.apiKeyInput.value);
+  elements.connectBtn.disabled = false;
+  elements.connectBtn.textContent = 'Connect';
+
+  if (result.success) {
+    elements.apiKeyInput.value = ''; // the key is never kept or shown again
+    elements.connectStatus.hidden = true;
+    renderUsage(await loadUsageData());
+  } else {
+    showInlineStatus(elements.connectStatus, result.error, false, 8000);
+  }
+}
+
+/** The live badge is only visible when the extension is pinned; hint at it once, if it is not. */
+async function checkPinHint() {
+  try {
+    const settings = await chrome.action?.getUserSettings?.();
+    const { ollamaPinHintDismissed } = await chrome.storage.local.get('ollamaPinHintDismissed');
+    pinHintWanted = settings?.isOnToolbar === false && !ollamaPinHintDismissed;
+  } catch {
+    pinHintWanted = false; // API missing (older browser): no hint
+  }
+  elements.pinHint.hidden = !pinHintWanted || setupNeeded;
 }
 
 /**
@@ -507,6 +542,7 @@ function renderUsage(data) {
   if (needsKey) {
     elements.connectText.textContent = CONNECT_TEXT[data?.status] || CONNECT_TEXT.no_key;
     hideStatus();
+    elements.pinHint.hidden = true;
     elements.metersContainer.textContent = '';
     for (const node of [elements.creditsBlock, elements.modelsBlock, elements.recentBlock, elements.lastUpdated, elements.activityBlock]) {
       node.hidden = true;
@@ -514,6 +550,7 @@ function renderUsage(data) {
     return;
   }
   elements.activityBlock.hidden = false;
+  elements.pinHint.hidden = !pinHintWanted;
 
   // Error states keep showing the last good numbers (marked stale by the worker)
   if (data.status !== 'ok') {
@@ -616,7 +653,7 @@ function showInlineStatus(node, message, isSuccess, hideAfterMs = 3000) {
  * badge + refresh + gear; settings view: "Settings" + close) so the layout never jumps.
  */
 function syncHeader() {
-  elements.headerTitle.textContent = settingsOpen ? 'Settings' : 'Ollama Cloud Usage';
+  elements.headerTitle.textContent = settingsOpen ? 'Settings' : 'Usage Tracker for Ollama Cloud';
   elements.refreshBtn.hidden = settingsOpen;
   // SVG elements have no .hidden property - toggle the attribute
   elements.gearIcon.toggleAttribute('hidden', settingsOpen);
@@ -655,6 +692,7 @@ async function init() {
   currentSettings = settings;
   activityData = stored.ollamaActivity || null;
 
+  await checkPinHint();
   renderUsage(data);
   renderActivity();
   updatePeakBanner();
@@ -666,8 +704,16 @@ async function init() {
   elements.activityWeekBtn.addEventListener('click', () => setActivityMode('week'));
   elements.activityMonthBtn.addEventListener('click', () => setActivityMode('month'));
 
-  elements.connectBtn.addEventListener('click', openSetup);
-  elements.manageKeyBtn.addEventListener('click', openSetup);
+  elements.connectBtn.addEventListener('click', submitKey);
+  elements.apiKeyInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') submitKey();
+  });
+  elements.manageKeyBtn.addEventListener('click', openOptions);
+  elements.pinHintClose.addEventListener('click', async () => {
+    pinHintWanted = false;
+    elements.pinHint.hidden = true;
+    await chrome.storage.local.set({ ollamaPinHintDismissed: true });
+  });
 
   // Refresh button
   elements.refreshBtn.addEventListener('click', async () => {

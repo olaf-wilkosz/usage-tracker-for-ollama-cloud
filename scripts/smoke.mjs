@@ -24,10 +24,25 @@ async function targets() {
   try { return await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); } catch { return []; }
 }
 
+/** True when the service worker target belongs to this extension (browsers ship built-in ones with the same file name). */
+async function isOurs(target) {
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((r) => socket.addEventListener("open", r));
+  const answer = await new Promise((resolve) => {
+    socket.addEventListener("message", (e) => { const m = JSON.parse(e.data); if (m.id === 1) resolve(m); });
+    setTimeout(() => resolve({}), 3000);
+    socket.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params: { expression: "chrome.runtime.getManifest().name", returnByValue: true } }));
+  });
+  socket.close();
+  return answer.result?.result?.value === "Usage Tracker for Ollama Cloud";
+}
+
 let sw;
 for (let i = 0; i < 40 && !sw; i++) {
   await sleep(500);
-  sw = (await targets()).find((t) => t.type === 'service_worker' && t.url.includes('background.js'));
+  for (const target of (await targets()).filter((t) => t.type === "service_worker")) {
+    if (await isOurs(target)) { sw = target; break; }
+  }
 }
 if (!sw) { console.log('FAIL: no service worker target found', JSON.stringify((await targets()).map((t) => [t.type, t.url])), 'chrome', (await (await fetch('http://127.0.0.1:' + port + '/json/version').catch(() => null))?.json())?.Browser); proc.kill(); process.exit(1); }
 console.log('service worker:', sw.url);
@@ -88,7 +103,15 @@ console.log("connect with a bogus key:", await options.evaluate(`(async () => {
 options.close();
 
 const popup = await openPage("popup.html");
-console.log("popup shows setup prompt:", await popup.evaluate("JSON.stringify({ connect: !document.getElementById('connectBlock').hidden, text: document.getElementById('connectText').textContent.slice(0, 60), meters: document.getElementById('metersContainer').children.length })"));
+console.log("popup shows inline setup:", await popup.evaluate("JSON.stringify({ connect: !document.getElementById('connectBlock').hidden, title: document.getElementById('headerTitle').textContent, meters: document.getElementById('metersContainer').children.length, pinHintHiddenDuringSetup: document.getElementById('pinHint').hidden })"));
+console.log("popup: bogus key:", await popup.evaluate(`(async () => {
+  document.getElementById("apiKeyInput").value = "not-a-real-key-123456789";
+  document.getElementById("connectBtn").click();
+  await new Promise((r) => setTimeout(r, 4000));
+  const st = document.getElementById("connectStatus");
+  return JSON.stringify({ status: st.textContent, hidden: st.hidden, stillSetup: !document.getElementById("connectBlock").hidden });
+})()`));
+console.log("pin API available:", await popup.evaluate("chrome.action.getUserSettings().then((u) => JSON.stringify(u))"));
 popup.close();
 console.log('errors/warnings logged:', JSON.stringify(logs));
 

@@ -66,5 +66,6 @@ Text and badge colors are checked against WCAG AA (4.5:1) by a unit test (`test/
 ## Testing
 
 - `node --test`: pure logic (API mapping, activity, settings, key sealing) and the service worker against stubbed `chrome.*` and a stubbed Ollama API, using real API responses as fixtures (`test/fixtures`).
+- `npm run probe` (needs your API key in `OLLAMA_API_KEY`): prints what the API reports for your account and cross-checks it (buckets vs totals vs groups, one partial bucket, usage since the period began, with and without `web_search`), so numbers can be compared with ollama.com/settings without pasting raw JSON.
 - `npm run smoke`: loads the unpacked extension into a real Chromium-based browser and drives the setup flow against the real Ollama API with a made-up key.
 - Not covered automatically: Firefox, and paid-plan accounts (the API schemas are taken from the official documentation).

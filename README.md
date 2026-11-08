@@ -38,9 +38,12 @@ The Chrome Web Store and Firefox Add-ons listings are on the way. Until then:
 
 1. Download `usage-tracker-for-ollama-cloud-<version>-chrome.zip` from the [latest release](https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/releases/latest) and unzip it (or clone this repo and use the `extension/` folder).
 2. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the unzipped folder.
-3. A setup page opens. Create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys), paste it, click **Connect**.
+3. Click the extension icon (a setup page also opens on first install). Create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys), paste it into the popup (or the setup page) and click **Connect**. The popup closes when you switch tabs, so just reopen it after copying the key.
+4. Pin the extension to the toolbar (extensions menu, then the pin) to keep the live badge in view; the popup reminds you until you do.
 
-That is the whole setup. Firefox: load `dist/firefox` after `npm run build` via `about:debugging` (temporary add-on) until the AMO listing is live.
+That is the whole setup.
+
+**Firefox / Zen:** run `npm run build`, open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `dist/firefox/manifest.json` (until the AMO listing is live). If requests fail, check that the extension is allowed to access `ollama.com` under `about:addons` > the extension > Permissions.
 
 ## How it works
 
@@ -86,6 +89,7 @@ npm run check       # release checks: versions, store limits, permissions, forbi
 npm run build       # dist/chrome, dist/firefox and both zips
 npm run preview     # popup and options page with sample data at http://localhost:8765/popup?scenario=busy
 npm run render      # re-render store screenshots and promo tiles
+npm run probe       # print what the API reports for YOUR account (needs OLLAMA_API_KEY) and check it for consistency
 npm run smoke -- "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"   # load the extension in a real browser
 ```
 

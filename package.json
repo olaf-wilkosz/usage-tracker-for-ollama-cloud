@@ -12,7 +12,8 @@
     "preview": "node scripts/preview-server.mjs",
     "smoke": "node scripts/smoke.mjs",
     "render": "node scripts/render-store.mjs",
-    "site": "node scripts/build-site.mjs"
+    "site": "node scripts/build-site.mjs",
+    "probe": "node scripts/api-probe.mjs"
   },
   "devDependencies": {
     "fflate": "^0.8.3",

@@ -9,7 +9,7 @@
   <div class="container">
     <header id="mainHeader">
       <h1>
-        <span id="headerTitle">Ollama Cloud Usage</span>
+        <span id="headerTitle">Usage Tracker for Ollama Cloud</span>
       </h1>
       <div class="header-actions">
         <button id="refreshBtn" class="icon-btn" title="Refresh now" aria-label="Refresh usage data">
@@ -41,9 +41,31 @@
       <!-- Shown until an API key is connected (or when Ollama rejects it) -->
       <section id="connectBlock" class="usage-block connect-block" hidden>
         <div class="block-heading">Connect your Ollama account</div>
-        <p id="connectText" class="connect-text">The tracker reads your usage through Ollama's official API and needs an API key. Setup takes a minute.</p>
-        <button id="connectBtn" class="btn btn-primary" type="button">Set up</button>
+        <p id="connectText" class="connect-text">The tracker reads your usage through Ollama's official API and needs an API key. It takes a minute.</p>
+        <ol class="connect-steps">
+          <li>
+            <a id="keysLink" href="https://ollama.com/settings/keys" target="_blank" rel="noopener">Create an API key at ollama.com</a>
+            and copy it. <span class="connect-aside">This popup closes when you switch tabs; just reopen it from the toolbar.</span>
+          </li>
+          <li>Paste the key here:</li>
+        </ol>
+        <div class="key-row">
+          <input id="apiKeyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="Paste your Ollama API key" aria-label="Ollama API key">
+          <button id="connectBtn" class="btn btn-primary" type="button">Connect</button>
+        </div>
+        <p id="connectStatus" class="clear-status" hidden role="status"></p>
+        <p class="connect-note">Ollama keys can't be limited to read-only, so treat it like a password. Here it is stored encrypted, sent only to ollama.com and never shown again.</p>
       </section>
+
+      <!-- Shown while the extension is not pinned to the toolbar (the live badge is only visible there) -->
+      <div id="pinHint" class="pin-hint" hidden>
+        <span class="pin-icon" aria-hidden="true">📌</span>
+        <span class="pin-text"><strong>Pin it to the toolbar</strong> to keep the live badge in view: extensions menu (puzzle icon), then the pin.</span>
+        <button id="pinHintClose" class="icon-btn pin-close" type="button" title="Dismiss" aria-label="Dismiss the pin hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+        </button>
+      </div>
 
       <!-- Peak / off-peak pricing hours (from ollama.com/pricing, computed locally) -->
       <div id="peakBanner" class="peak-banner" hidden>
@@ -152,8 +174,8 @@
     </section>
 
     <footer>
-      <a href="https://ollama.com/settings" target="_blank" rel="noopener" class="settings-link">
-        Open Ollama settings
+      <a href="https://ollama.com/settings/usage" target="_blank" rel="noopener" class="settings-link">
+        Open Ollama usage page
       </a>
     </footer>
   </div>

@@ -276,7 +276,7 @@ async function checkPersistentErrors(data, settings) {
       await chrome.notifications.create('ollama-usage-persistent-error', {
         type: 'basic',
         iconUrl: 'icons/icon48.png',
-        title: 'Ollama Usage Tracker Error',
+        title: 'Usage Tracker for Ollama Cloud: problem',
         message,
         priority: 2
       });

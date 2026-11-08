@@ -90,8 +90,9 @@ h1 {
   letter-spacing: -0.035em;
   margin: 0 auto 22px;
   max-width: 14em;
+  text-wrap: balance;
 }
-h1 em { font-style: normal; color: var(--green); }
+h1 em { font-style: normal; color: var(--green); display: block; }
 
 .lead { font-size: clamp(18px, 2.2vw, 22px); color: var(--text-2); max-width: 36em; margin: 0 auto 32px; }
 
@@ -131,13 +132,13 @@ h1 em { font-style: normal; color: var(--green); }
 
 /* Sections */
 section { padding: 88px 0 0; }
-h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 14px; }
+h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 14px; text-wrap: balance; }
 .section-lead { color: var(--text-2); max-width: 40em; margin: 0 0 40px; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
 
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
-.card h3 { margin: 0 0 8px; font-size: 19px; }
+.card h3 { margin: 0 0 8px; font-size: 19px; white-space: nowrap; }
 .card p { margin: 0; color: var(--text-2); font-size: 16px; }
 .card .icon { font-size: 26px; margin-bottom: 14px; display: block; }
 
@@ -166,8 +167,41 @@ h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.
 .checks li { padding-left: 32px; position: relative; }
 .checks li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
 
+/* FAQ accordion: panels open independently (users compare answers) and animate where the
+   browser supports ::details-content; elsewhere they simply open. */
+:root { interpolate-size: allow-keywords; }
+
 details { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 22px; margin-bottom: 12px; }
-summary { cursor: pointer; font-weight: 600; padding: 16px 0; font-size: 18px; }
+details::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size 0.28s ease, content-visibility 0.28s allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 16px 0;
+  font-size: 18px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after {
+  content: ;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--text-2);
+  border-bottom: 2px solid var(--text-2);
+  transform: rotate(45deg);
+  transition: transform 0.28s ease;
+}
+details[open] > summary::after { transform: rotate(-135deg); }
 details p { margin: 0 0 18px; color: var(--text-2); }
 
 /* Footer */
@@ -194,4 +228,5 @@ footer.site p { margin: 0; max-width: 40em; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  details::details-content, summary::after { transition: none; }
 }

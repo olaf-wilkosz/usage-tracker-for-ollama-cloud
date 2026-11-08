@@ -3,7 +3,7 @@
 // (scripts/render-store.mjs).
 //
 //   node scripts/preview-server.mjs            -> http://localhost:8765
-//   /popup?scenario=free|busy|legacy|payg|connect|badkey|offline|empty[&settings=1][&click=#id][&scroll=#id]
+//   /popup?scenario=free|busy|legacy|payg|connect|badkey|offline|empty[&settings=1][&pinned=1][&click=#id][&scroll=#id]
 //   /options?scenario=connected|fresh
 //
 // "free" is a real Free-account response (test/fixtures) moved to the present; the other
@@ -129,7 +129,7 @@ function scenario(name, now = Date.now()) {
   }
 }
 
-function stub({ data, activity, hasKey }) {
+function stub({ data, activity, hasKey, pinned }) {
   return `<script>
 (() => {
   const data = ${JSON.stringify(data)};
@@ -148,7 +148,8 @@ function stub({ data, activity, hasKey }) {
         setTimeout(() => cb && cb(replies[msg.type] || { success: true }), 0);
       }
     },
-    storage: { local: { get: async () => ({ ollamaActivity: activity, ollamaDiagnostics: { text: '{}' } }) }, onChanged: { addListener() {} } }
+    action: { getUserSettings: async () => ({ isOnToolbar: ${pinned} }) },
+    storage: { local: { get: async () => ({ ollamaActivity: activity, ollamaDiagnostics: { text: '{}' } }), set: async () => {} }, onChanged: { addListener() {} } }
   };
 })();
 </script>`;
@@ -165,7 +166,7 @@ export function startServer(port = 8765) {
       const state = scenario(isOptions ? 'free' : name);
       const hasKey = isOptions ? name === 'connected' : !['connect', 'empty'].includes(name);
       let html = readFileSync(join(EXT, isOptions ? 'options.html' : 'popup.html'), 'utf8');
-      html = html.replace('<head>', () => `<head><base href="/ext/">${stub({ ...state, hasKey })}`);
+      html = html.replace('<head>', () => `<head><base href="/ext/">${stub({ ...state, hasKey, pinned: url.searchParams.get('pinned') === '1' })}`);
       // ?click=#selector and ?scroll=#selector drive the page into the state a screenshot needs
       const click = url.searchParams.get('click');
       const scroll = url.searchParams.get('scroll');

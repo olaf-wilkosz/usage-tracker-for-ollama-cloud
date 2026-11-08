@@ -7,6 +7,7 @@
 - **Activity:** exact hourly activity for the last 24 h and daily totals for 30 days from the API (the month heatmap is complete from the first refresh); "Recent activity" lists the busiest recent hours.
 - **Robustness:** last good numbers stay on screen (marked stale) when the API is briefly unreachable.
 - **Accessibility:** text and badge colors meet WCAG AA.
+- **Setup in the popup:** create-a-key link, paste field and Connect button right in the popup; a dismissible hint to pin the extension to the toolbar (shown only while it is not pinned). The title bar now reads "Usage Tracker for Ollama Cloud"; the footer links to ollama.com/settings/usage.
 - **Name:** renamed to "Usage Tracker for Ollama Cloud" and marked as unofficial.
 - **Project:** `extension/`, `store/`, `landing/`, `docs/` layout; CI, release and Pages workflows; Firefox build; browser smoke test.
 - Removed: HTML parsing, "Recent requests" per-request list, model colors read from the page.

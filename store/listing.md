@@ -31,7 +31,7 @@ WHAT YOU GET
 • Dark, accessible interface (text contrast meets WCAG AA)
 
 HOW IT WORKS
-The extension uses the official Ollama API with an API key from your own account. Setup takes a minute: create a key at ollama.com/settings/keys, paste it into the setup page, done. Because it uses the documented API instead of reading web pages, it keeps working when ollama.com changes.
+The extension uses the official Ollama API with an API key from your own account. Setup takes a minute: create a key at ollama.com/settings/keys, paste it into the extension popup, done. Because it uses the documented API instead of reading web pages, it keeps working when ollama.com changes.
 
 PRIVATE BY DESIGN
 • The only server it contacts is ollama.com (read-only requests, no cookies)

@@ -170,6 +170,71 @@ header h1 {
   margin: 6px 0 12px;
 }
 
+.connect-steps {
+  margin: 0 0 10px 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.connect-steps li + li { margin-top: 4px; }
+
+.connect-steps a { color: var(--link); text-decoration: underline; }
+
+.connect-aside { display: block; font-size: 12px; color: var(--text-muted); }
+
+.key-row { display: flex; gap: 8px; }
+
+.key-row input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 9px 12px;
+}
+
+.key-row input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.25);
+}
+
+.key-row .btn { width: auto; white-space: nowrap; padding-left: 16px; padding-right: 16px; }
+
+#connectStatus { margin-top: 10px; }
+
+.connect-note {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* "Pin it to the toolbar" hint */
+.pin-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 6px 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: rgba(100, 181, 246, 0.07);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.pin-hint strong { color: var(--text-primary); }
+
+.pin-icon { font-size: 15px; line-height: 1.3; }
+
+.pin-text { flex: 1; min-width: 0; }
+
+.pin-close { flex: none; width: 24px; height: 24px; padding: 0; }
+
 /* Status container for errors */
 .status-container {
   padding: 12px 14px;

@@ -39,7 +39,7 @@ const JOBS = [
   ['store/promo/marquee-1400x560.html', 'store/promo/marquee-1400x560.png', 1400, 560],
   ['store/promo/og-1200x630.html', 'store/promo/og-1200x630.png', 1200, 630],
   // the bare popup (2x), for the website hero
-  ['/popup?scenario=busy', 'store/promo/popup.png', 360, 574, 2]
+  ['/popup?scenario=busy&pinned=1', 'store/promo/popup.png', 360, 574, 2]
 ];
 
 const server = await startServer(PORT);
