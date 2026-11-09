@@ -107,7 +107,10 @@
           <span class="block-heading">Recent activity</span>
           <span id="recentSummary" class="summary-note"></span>
         </summary>
+        <div id="recentHoursHeading" class="recent-subheading">Last 24 hours</div>
         <ul id="recentList" class="recent-list"></ul>
+        <div id="recentDaysHeading" class="recent-subheading">Last 14 days</div>
+        <ul id="recentDaysList" class="recent-list"></ul>
       </details>
 
       <section id="activityBlock" class="usage-block">
@@ -167,7 +170,14 @@
 
       <div class="setting-group">
         <label>Ollama account</label>
-        <button id="manageKeyBtn" class="btn btn-secondary" type="button">Manage API key</button>
+        <p id="accountState" class="account-state"></p>
+        <div class="key-row">
+          <input id="newKeyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="Paste an API key" aria-label="Ollama API key">
+          <button id="replaceKeyBtn" class="btn btn-secondary" type="button">Connect</button>
+        </div>
+        <p id="accountStatus" class="clear-status" hidden role="status"></p>
+        <button id="removeKeyBtn" class="btn btn-secondary" type="button" hidden>Remove key from this browser</button>
       </div>
 
       <div class="setting-group">

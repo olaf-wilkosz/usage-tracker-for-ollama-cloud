@@ -124,8 +124,8 @@ function scenario(name, now = Date.now()) {
       const { data, activity } = finish(busyRaw(now));
       return { data: { ...data, status: 'network_error', stale: true, lastFetch: new Date(now - 26 * 60e3).toISOString() }, activity };
     }
-    case 'connect': return { data: { status: 'no_key', meters: [], credits: null, modelsByRange: { '7d': [], '30d': [] }, recentHours: [] }, activity: null };
-    case 'badkey': return { data: { status: 'auth_required', meters: [], credits: null, modelsByRange: { '7d': [], '30d': [] }, recentHours: [] }, activity: null };
+    case 'connect': return { data: { status: 'no_key', meters: [], credits: null, modelsByRange: {}, recentHours: [], recentDays: [] }, activity: null };
+    case 'badkey': return { data: { status: 'auth_required', meters: [], credits: null, modelsByRange: {}, recentHours: [], recentDays: [] }, activity: null };
     default: return { data: null, activity: null };
   }
 }

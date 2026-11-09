@@ -2,6 +2,17 @@
 
 `npm run a11y` (axe-core) catches structural problems: missing labels, roles, contrast of text, `lang`. It cannot tell whether the experience *makes sense* with a keyboard or a screen reader. This script covers that. Allow about 40 minutes; run it before a release that changes the UI.
 
+## The 10-minute version
+
+`npm run a11y` already presses the real Tab key through every popup state, the options page and the website: every visible control must be reachable, show a focus indicator and no tabindex may be positive. So the keyboard section below is only about *order and sense*. If you do just one pass by hand, do this one:
+
+1. **Screen reader, 5 minutes** (NVDA or Narrator): open the popup with the usage state (`npm run preview`, `scenario=busy&pinned=1`) and read it top to bottom. Check 2.3 (usage card reads as text), 2.4 (range buttons announce their pressed state) and 2.5 (the heatmap is one sentence, not 200 cells).
+2. **Zoom, 2 minutes:** the website at 400 % has no sideways scrolling (3.1).
+3. **Windows contrast theme, 2 minutes:** turn one on and look at the popup: the active range button is still distinguishable (4.2).
+4. **Setup by keyboard, 1 minute:** `scenario=connect`: Tab goes link, field, Connect, in that order (1.3).
+
+Everything below is the full version, for a release that changes the UI a lot.
+
 **Setup**
 
 - Browser: Brave or Chrome (and once in Zen / Firefox).

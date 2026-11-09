@@ -38,6 +38,12 @@ test('formatDayRange: like the date range on the usage page', () => {
   assert.equal(L.formatDayRange(null, '2026-11-09'), '');
 });
 
+test('formatDay: weekday and date of a UTC day', () => {
+  assert.equal(L.formatDay('2026-11-08'), 'Sun, Nov 8');
+  assert.equal(L.formatDay('2026-11-09'), 'Mon, Nov 9');
+  assert.equal(L.formatDay('2026-01-01'), 'Thu, Jan 1');
+});
+
 test('rangeEntry: accepts the current shape and the bare array an earlier version stored', () => {
   assert.deepEqual(L.rangeEntry({ from: '2026-11-01', to: '2026-11-08', models: [{ model: 'a', requests: 1 }] }), { from: '2026-11-01', to: '2026-11-08', models: [{ model: 'a', requests: 1 }] });
   assert.deepEqual(L.rangeEntry([{ model: 'a', requests: 1 }]), { from: null, to: null, models: [{ model: 'a', requests: 1 }] });

@@ -5,8 +5,9 @@
  * Usage data shape (stored under "ollamaUsageData"):
  *   { status, meters: [{ id, label, usedPercent, detail, resetsAt, resetVerb }],
  *     credits: { amount, text } | null,
- *     modelsByRange: { "7d": [{ model, requests, cost }], "30d": [...] },
+ *     modelsByRange: { month|7d|30d: { from, to, models: [{ model, requests, cost }] } },
  *     recentHours: [{ from, requests, cost, models: [{ model, requests }] }],
+ *     recentDays: [{ date, requests, cost, models: [{ model, requests }] }],
  *     lastFetch, stale? }
  */
 
@@ -15,7 +16,7 @@
  * @param {string} status
  */
 export function emptyUsage(status) {
-  return { status, meters: [], credits: null, modelsByRange: { '7d': [], '30d': [] }, recentHours: [] };
+  return { status, meters: [], credits: null, modelsByRange: {}, recentHours: [], recentDays: [] };
 }
 
 /**

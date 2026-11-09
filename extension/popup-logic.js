@@ -48,6 +48,14 @@ export function formatDayRange(from, to) {
   return `${MONTH_NAMES[fm - 1]} ${fd} – ${MONTH_NAMES[tm - 1]} ${td}`;
 }
 
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "Sun, Nov 8" for a YYYY-MM-DD UTC day. */
+export function formatDay(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  return `${WEEKDAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}, ${MONTH_NAMES[m - 1]} ${d}`;
+}
+
 /**
  * Rows of a models range. Data stored by an earlier version holds a bare array; the current
  * shape is { from, to, models }.

@@ -10,9 +10,9 @@
 import { formatResetTime, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
-  isPinnedToToolbar, showInlineStatus, DEFAULT_SETTINGS
+  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, DEFAULT_SETTINGS
 } from './settings.js';
-import { buildLegendItems, summarizeActivity, formatDayRange, rangeEntry } from './popup-logic.js';
+import { buildLegendItems, summarizeActivity, formatDay, formatDayRange, rangeEntry } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
@@ -38,7 +38,14 @@ const elements = {
   connectStatus: document.getElementById('connectStatus'),
   pinHint: document.getElementById('pinHint'),
   pinHintClose: document.getElementById('pinHintClose'),
-  manageKeyBtn: document.getElementById('manageKeyBtn'),
+  accountState: document.getElementById('accountState'),
+  newKeyInput: document.getElementById('newKeyInput'),
+  replaceKeyBtn: document.getElementById('replaceKeyBtn'),
+  removeKeyBtn: document.getElementById('removeKeyBtn'),
+  accountStatus: document.getElementById('accountStatus'),
+  recentHoursHeading: document.getElementById('recentHoursHeading'),
+  recentDaysHeading: document.getElementById('recentDaysHeading'),
+  recentDaysList: document.getElementById('recentDaysList'),
   peakBanner: document.getElementById('peakBanner'),
   peakTitle: document.getElementById('peakTitle'),
   peakDetail: document.getElementById('peakDetail'),
@@ -300,33 +307,44 @@ function renderModelList(listEl, models, total) {
  * collapsed by default (it's a glance-and-go popup) but its summary already says how many
  * requests happened in the last 24h.
  */
-function renderRecent(hours) {
-  const all = hours || [];
-  const latest = all.slice(0, RECENT_SHOWN);
-  elements.recentList.textContent = '';
-  elements.recentBlock.hidden = latest.length === 0;
+function renderRecent(hours, days) {
+  const allHours = hours || [];
+  const allDays = days || [];
+  const latest = allHours.slice(0, RECENT_SHOWN);
+  elements.recentBlock.hidden = latest.length === 0 && allDays.length === 0;
 
-  const requests = all.reduce((sum, h) => sum + h.requests, 0);
-  const cost = all.reduce((sum, h) => sum + h.cost, 0);
-  elements.recentSummary.textContent = `${requests} request${requests === 1 ? '' : 's'} · ${formatUsd(cost)} in 24h`;
+  // The summary speaks about the last 24 hours when there were requests in them, else about the last 14 days
+  const basis = allHours.length > 0 ? { rows: allHours, span: '24h' } : { rows: allDays, span: '14 days' };
+  const requests = basis.rows.reduce((sum, r) => sum + r.requests, 0);
+  const cost = basis.rows.reduce((sum, r) => sum + r.cost, 0);
+  elements.recentSummary.textContent = `${requests} request${requests === 1 ? '' : 's'} · ${formatUsd(cost)} in ${basis.span}`;
 
-  for (const hour of latest) {
+  const fill = (list, heading, rows, label) => {
+    list.textContent = '';
+    heading.hidden = rows.length === 0;
+    for (const row of rows) {
+      const top = [...row.models].sort((x, y) => y.requests - x.requests)[0];
+
+      const li = el('li');
+      li.title = row.models.map((m) => `${m.model}: ${m.requests}`).join('\n');
+
+      const swatch = el('span', 'model-swatch');
+      swatch.style.background = modelColor(top?.model ?? '');
+      const text = el('div', 'model-text');
+      const detail = `${row.requests} request${row.requests === 1 ? '' : 's'}${row.models.length > 1 ? ` · ${row.models.length} models` : ''}`;
+      text.append(el('div', 'model-name', label(row)), el('div', 'model-requests', detail));
+
+      li.append(swatch, text, el('span', 'recent-cost', formatUsd(row.cost)));
+      list.appendChild(li);
+    }
+  };
+
+  fill(elements.recentList, elements.recentHoursHeading, latest, (hour) => {
     const start = new Date(hour.from);
-    const top = [...hour.models].sort((a, b) => b.requests - a.requests)[0];
-
-    const li = el('li');
-    li.title = hour.models.map((m) => `${m.model}: ${m.requests}`).join('\n');
-
-    const swatch = el('span', 'model-swatch');
-    swatch.style.background = modelColor(top?.model ?? '');
-    const text = el('div', 'model-text');
-    const when = `${start.toLocaleDateString(undefined, { weekday: 'short' })} ${String(start.getHours()).padStart(2, '0')}:00`;
-    const detail = `${hour.requests} request${hour.requests === 1 ? '' : 's'}${hour.models.length > 1 ? ` · ${hour.models.length} models` : ''}`;
-    text.append(el('div', 'model-name', when), el('div', 'model-requests', detail));
-
-    li.append(swatch, text, el('span', 'recent-cost', formatUsd(hour.cost)));
-    elements.recentList.appendChild(li);
-  }
+    return `${start.toLocaleDateString(undefined, { weekday: 'short' })} ${String(start.getHours()).padStart(2, '0')}:00`;
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  fill(elements.recentDaysList, elements.recentDaysHeading, allDays, (day) => `${formatDay(day.date)}${day.date === today ? ' (today, UTC)' : ''}`);
 }
 
 const RANGE_NAMES = { month: 'this month', '7d': 'the last 7 days', '30d': 'the last 30 days' };
@@ -526,11 +544,6 @@ const CONNECT_TEXT = {
   auth_required: 'Ollama rejected the saved API key (revoked or replaced?). Create a new one and paste it here.'
 };
 
-function openOptions() {
-  chrome.runtime.openOptionsPage();
-  window.close();
-}
-
 /** Check the key with Ollama and store it; the worker then refreshes and the popup re-renders. */
 async function submitKey() {
   elements.connectBtn.disabled = true;
@@ -596,7 +609,7 @@ function renderUsage(data) {
   renderMeters(data.meters || [], data.status);
   renderCredits(data.credits);
   renderModels(data);
-  renderRecent(data.recentHours);
+  renderRecent(data.recentHours, data.recentDays);
 
   // Last updated
   elements.lastUpdated.textContent = `Last updated: ${formatLastUpdated(data.lastFetch)}`;
@@ -687,9 +700,46 @@ function syncHeader() {
   elements.settingsBtn.setAttribute('aria-label', label);
 }
 
+/** The account group of the settings: connected or not, and what the buttons do. */
+async function syncAccountGroup() {
+  const connected = await isConnected();
+  elements.accountState.textContent = connected ? 'Connected to Ollama.' : 'Not connected yet.';
+  elements.newKeyInput.placeholder = connected ? 'Paste a new key' : 'Paste an API key';
+  elements.replaceKeyBtn.textContent = connected ? 'Replace' : 'Connect';
+  elements.removeKeyBtn.hidden = !connected;
+}
+
+async function submitAccountKey() {
+  elements.replaceKeyBtn.disabled = true;
+  elements.replaceKeyBtn.textContent = 'Checking...';
+  const result = await saveApiKey(elements.newKeyInput.value);
+  elements.replaceKeyBtn.disabled = false;
+
+  if (result.success) {
+    elements.newKeyInput.value = '';
+    showInlineStatus(elements.accountStatus, 'Key saved. Usage is refreshing.', true, 5000);
+    renderUsage(await loadUsageData());
+  } else {
+    showInlineStatus(elements.accountStatus, result.error, false, 8000);
+  }
+  await syncAccountGroup();
+}
+
+async function removeKey() {
+  if (!confirm('Remove the API key from this browser? Tracking stops until you connect again. (The key stays valid at ollama.com until you revoke it there.)')) return;
+  const result = await removeApiKey();
+  if (!result.success) {
+    showInlineStatus(elements.accountStatus, `Failed: ${result.error}`, false);
+    return;
+  }
+  closeSettingsView();
+  renderUsage(await loadUsageData()); // back to the setup prompt
+}
+
 async function openSettingsView() {
   const settings = await loadSettings();
   populateSettingsForm(settings);
+  await syncAccountGroup();
   settingsOpen = true;
   elements.mainView.hidden = true;
   elements.settingsView.hidden = false;
@@ -736,7 +786,11 @@ async function init() {
   elements.apiKeyInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') submitKey();
   });
-  elements.manageKeyBtn.addEventListener('click', openOptions);
+  elements.replaceKeyBtn.addEventListener('click', submitAccountKey);
+  elements.newKeyInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') submitAccountKey();
+  });
+  elements.removeKeyBtn.addEventListener('click', removeKey);
   elements.pinHintClose.addEventListener('click', async () => {
     pinHintWanted = false;
     elements.pinHint.hidden = true;

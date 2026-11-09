@@ -87,6 +87,17 @@ test('buildUsage: recent hours are the non-empty hourly buckets, newest first', 
   assert.equal(recentHours[3].cost, 0.16532);
 });
 
+test('buildUsage: recent days = the non-empty days of the last 14, newest first (the usage page lists requests two weeks back)', () => {
+  const { recentDays } = Api.buildUsage(raw());
+  assert.deepEqual(recentDays.map((d) => [d.date, d.requests]), [
+    ['2026-11-07', 8], ['2026-11-06', 4], ['2026-11-04', 60], ['2026-11-03', 1], ['2026-11-02', 22], ['2026-10-31', 1]
+  ]);
+  const nov2 = recentDays.find((d) => d.date === '2026-11-02');
+  assert.deepEqual(nov2.models, [{ model: 'nemotron-3-ultra', requests: 13 }, { model: 'web_search', requests: 9 }]);
+  assert.ok(Math.abs(nov2.cost - 0.2577) < 1e-9);
+  assert.ok(!recentDays.some((d) => d.date < '2026-10-26'), 'older than 14 days is left out');
+});
+
 test('buildUsage: legacy session + weekly windows', () => {
   const { meters, credits } = Api.buildUsage({ ...raw(), balance: fixture('balance-legacy.json') });
   assert.deepEqual(meters.map((m) => [m.id, m.label, m.usedPercent, m.resetVerb]), [

@@ -1,11 +1,13 @@
-// Accessibility audit: runs axe-core (WCAG 2.0/2.1/2.2 A + AA and best practices) against the
-// popup in its main states, the options page and the website, in a headless Chromium-based
-// browser. Exits non-zero when anything is found, so it can run in CI.
+// Accessibility audit, in a headless Chromium-based browser, on the popup in its main states,
+// the options page and the website. Exits non-zero when anything is found, so it can run in CI.
+//   1. axe-core (WCAG 2.0/2.1/2.2 A + AA and best practices)
+//   2. a keyboard pass: real Tab key presses must reach every visible control, each stop must
+//      show a focus indicator, and there must be no positive tabindex.
 //
 //   node scripts/a11y.mjs            (Edge, Chrome or Brave is picked automatically; BROWSER=path overrides)
 //
-// What it cannot judge: whether labels make sense, reading order with a real screen reader,
-// keyboard flow. Those stay manual checks (see docs/architecture.md, "Accessibility").
+// What it cannot judge: whether labels make sense and what a screen reader actually says.
+// That stays a manual check (docs/accessibility-testing.md).
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -70,6 +72,47 @@ async function openTarget(url) {
   throw new Error('browser did not start');
 }
 
+/** Press Tab through the page and report controls that cannot be reached or show no focus indicator. */
+async function keyboardAudit(call, evaluate) {
+  await call('Emulation.setFocusEmulationEnabled', { enabled: true });
+  const expected = JSON.parse(await evaluate(`(() => {
+    document.activeElement?.blur();
+    const nodes = [...document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary, [tabindex]')]
+      .filter((el) => !el.disabled && el.getAttribute('tabindex') !== '-1' && el.checkVisibility({ checkVisibilityCSS: true, visibilityProperty: true }));
+    nodes.forEach((el, i) => { el.dataset.kbd = String(i); });
+    return JSON.stringify({
+      positive: nodes.filter((el) => el.tabIndex > 0).length,
+      names: nodes.map((el) => (el.id || el.textContent || el.tagName).trim().replace(/\\s+/g, ' ').slice(0, 40))
+    });
+  })()`));
+
+  const visited = new Set();
+  const noIndicator = new Set();
+  for (let press = 0; press < expected.names.length + 4; press++) {
+    for (const type of ['keyDown', 'keyUp']) {
+      await call('Input.dispatchKeyEvent', { type, key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    }
+    const stop = JSON.parse(await evaluate(`(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body || a.dataset.kbd === undefined) return 'null';
+      const cs = getComputedStyle(a);
+      const indicator = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || cs.boxShadow !== 'none';
+      return JSON.stringify({ id: Number(a.dataset.kbd), indicator });
+    })()`));
+    if (stop) {
+      visited.add(stop.id);
+      if (!stop.indicator) noIndicator.add(expected.names[stop.id]);
+    }
+  }
+
+  const problems = [];
+  const unreachable = expected.names.filter((_, i) => !visited.has(i));
+  if (unreachable.length) problems.push(`not reachable with Tab: ${unreachable.join(' | ')}`);
+  if (noIndicator.size) problems.push(`no visible focus indicator on: ${[...noIndicator].join(' | ')}`);
+  if (expected.positive) problems.push(`${expected.positive} element(s) with a positive tabindex`);
+  return problems;
+}
+
 async function audit(url) {
   const target = await openTarget(`http://localhost:${PORT}${url}`);
   const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -96,19 +139,24 @@ async function audit(url) {
   }).then((r) => JSON.stringify(r.violations.map((v) => ({
     id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map((n) => n.target.join(' ')).slice(0, 4), count: v.nodes.length
   }))))`));
+  const keyboard = await keyboardAudit(call, evaluate);
   socket.close();
   await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/close/${target.id}`).catch(() => {});
-  return result;
+  return { violations: result, keyboard };
 }
 
 let failures = 0;
 try {
   for (const [name, url] of PAGES) {
-    const violations = await audit(url);
-    console.log(`${violations.length === 0 ? 'PASS' : 'FAIL'}  ${name}`);
+    const { violations, keyboard } = await audit(url);
+    console.log(`${violations.length + keyboard.length === 0 ? 'PASS' : 'FAIL'}  ${name}`);
     for (const v of violations) {
       failures++;
       console.log(`      [${v.impact}] ${v.id}: ${v.help} (${v.count}x)  e.g. ${v.nodes.join(' | ')}`);
+    }
+    for (const problem of keyboard) {
+      failures++;
+      console.log(`      [keyboard] ${problem}`);
     }
   }
 } finally {

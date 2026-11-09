@@ -15,6 +15,7 @@ import { formatUsd } from './usage.js';
 export const API_BASE = 'https://ollama.com/api';
 const REQUEST_TIMEOUT_MS = 15000;
 const MAX_RECENT_HOURS = 24;
+const RECENT_DAYS = 14;
 
 /** Failure talking to the API; `kind` decides how the UI reports it. */
 export class ApiError extends Error {
@@ -202,6 +203,18 @@ export function buildUsage({ balance, day, month }) {
   const purchased = balance.purchased?.balance_usd;
   const credits = isNumber(purchased) ? { amount: purchased, text: formatUsd(purchased) } : null;
 
+  // The usage page lists requests two weeks back; the API has no per-request detail, so days stand in for them
+  const recentDays = month.buckets
+    .slice(-RECENT_DAYS)
+    .filter((b) => b.request_count > 0)
+    .map((b) => ({
+      date: b.from.slice(0, 10),
+      requests: b.request_count,
+      cost: b.usage_usd || 0,
+      models: (b.groups ?? []).map((g) => ({ model: String(g.model), requests: g.request_count || 0 }))
+    }))
+    .reverse(); // newest first
+
   const recentHours = day.buckets
     .filter((b) => b.request_count > 0)
     .map((b) => ({
@@ -218,7 +231,8 @@ export function buildUsage({ balance, day, month }) {
     meters,
     credits,
     modelsByRange: modelRanges(month),
-    recentHours
+    recentHours,
+    recentDays
   };
 }
 

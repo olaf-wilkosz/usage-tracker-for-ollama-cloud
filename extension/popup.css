@@ -880,6 +880,24 @@ footer {
   }
 }
 
+.account-state {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+#accountStatus { margin-top: 8px; }
+
+#removeKeyBtn { margin-top: 10px; }
+
+.recent-subheading {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 /* Text for assistive technology only (e.g. the heatmap summary) */
 .sr-only {
   position: absolute;
