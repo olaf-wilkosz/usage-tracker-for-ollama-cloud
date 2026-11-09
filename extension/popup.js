@@ -10,7 +10,7 @@
 import { formatResetTime, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
-  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, DEFAULT_SETTINGS
+  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, testNotificationMessage, DEFAULT_SETTINGS
 } from './settings.js';
 import { buildLegendItems, summarizeActivity, formatDay, formatDayRange, rangeEntry } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
@@ -833,14 +833,7 @@ async function init() {
 
   elements.testNotifyBtn.addEventListener('click', async () => {
     const result = await sendTestNotification();
-    showInlineStatus(
-      elements.testNotifyStatus,
-      result.success
-        ? 'Sent. Nothing showed up? Check Do Not Disturb / Focus Assist and your browser’s notification settings.'
-        : `Not sent: ${result.error}.`,
-      result.success,
-      7000
-    );
+    showInlineStatus(elements.testNotifyStatus, testNotificationMessage(result), result.success, 10000);
   });
 
   elements.diagnosticsBtn.addEventListener('click', async () => {

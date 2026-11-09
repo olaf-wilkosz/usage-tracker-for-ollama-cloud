@@ -234,7 +234,7 @@ async function checkThresholdNotifications(data, settings) {
       if (alreadyNotified) continue;
 
       const threshold = level === 'critical' ? settings.notifyCritical : settings.notifyWarning;
-      await chrome.notifications.create(`ollama-usage-${meter.id}`, {
+      await showNotification(`ollama-usage-${meter.id}`, {
         type: 'basic',
         iconUrl: 'icons/icon48.png',
         title: level === 'critical' ? 'Ollama Cloud Usage Critical' : 'Ollama Cloud Usage Alert',
@@ -254,13 +254,28 @@ async function checkThresholdNotifications(data, settings) {
  * getPermissionLevel reports. Ignores the "Enable notifications" switch on purpose.
  * @returns {Promise<{success: boolean, level: string, error?: string}>}
  */
+/**
+ * Show a notification. A notification that was already shown under the same id is cleared
+ * first: Windows can update such a toast in place without popping it up again, so a repeated
+ * alert (or a second click on "Send test") would otherwise look as if nothing happened.
+ */
+async function showNotification(id, options) {
+  await chrome.notifications.clear(id);
+  await chrome.notifications.create(id, options);
+}
+
+let lastTestNotificationId = null;
+
 async function sendTestNotification() {
   // Firefox has no getPermissionLevel; there a blocked notification is simply not shown
   const level = chrome.notifications.getPermissionLevel ? await chrome.notifications.getPermissionLevel() : 'granted';
   if (level !== 'granted') {
     return { success: false, level, error: 'Notifications are blocked for this extension in the browser settings' };
   }
-  await chrome.notifications.create('ollama-usage-test', {
+  // A fresh id per click: every test is a new toast, and the previous one is removed
+  if (lastTestNotificationId) await chrome.notifications.clear(lastTestNotificationId);
+  lastTestNotificationId = `ollama-usage-test-${Date.now()}`;
+  await chrome.notifications.create(lastTestNotificationId, {
     type: 'basic',
     iconUrl: 'icons/icon48.png',
     title: 'Usage Tracker for Ollama Cloud',
@@ -292,7 +307,7 @@ async function checkPersistentErrors(data, settings) {
     errors++;
     const message = PERSISTENT_ERROR_MESSAGES[data.status];
     if (errors === MAX_CONSECUTIVE_ERRORS && settings.notifyEnabled && message) {
-      await chrome.notifications.create('ollama-usage-persistent-error', {
+      await showNotification('ollama-usage-persistent-error', {
         type: 'basic',
         iconUrl: 'icons/icon48.png',
         title: 'Usage Tracker for Ollama Cloud: problem',

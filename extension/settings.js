@@ -65,6 +65,13 @@ export async function saveSettings(settings) {
   });
 }
 
+/** What to tell the user after "Send test" (shared by the popup and the options page). */
+export function testNotificationMessage(result) {
+  return result.success
+    ? 'Sent. Nothing showed up? Check Do Not Disturb / Focus Assist, then the notification settings of your operating system for this browser (Windows: Settings > System > Notifications).'
+    : `Not sent: ${result.error}.`;
+}
+
 /**
  * Ask the background worker to show a sample notification
  * @returns {Promise<{success: boolean, level?: string, error?: string}>}

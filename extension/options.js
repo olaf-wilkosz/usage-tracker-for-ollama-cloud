@@ -5,7 +5,7 @@
 
 import {
   DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
-  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, saveApiKey, removeApiKey
+  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, testNotificationMessage, saveApiKey, removeApiKey
 } from './settings.js';
 
 // DOM elements
@@ -165,14 +165,7 @@ async function init() {
   // Test notification handler
   elements.testNotifyBtn.addEventListener('click', async () => {
     const result = await sendTestNotification();
-    showInlineStatus(
-      elements.testNotifyStatus,
-      result.success
-        ? 'Sent. Nothing showed up? Check Do Not Disturb / Focus Assist and your browser’s notification settings.'
-        : `Not sent: ${result.error}.`,
-      result.success,
-      7000
-    );
+    showInlineStatus(elements.testNotifyStatus, testNotificationMessage(result), result.success, 10000);
   });
 
   // Copy diagnostics handler

@@ -19,6 +19,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Accessibility audit
+        run: npm run a11y
       - name: Release checks (the tag must match the manifest version)
         run: node scripts/check-release.mjs "${{ github.ref_name }}"
       - run: npm run build

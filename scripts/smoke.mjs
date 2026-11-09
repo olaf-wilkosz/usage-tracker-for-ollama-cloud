@@ -5,8 +5,8 @@
 // so use Edge, Brave or Chromium:
 //
 //   node scripts/smoke.mjs "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
-import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,15 @@ const proc = spawn(chrome, [
 ], { stdio: 'ignore' });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Stop the browser with all its child processes and delete its temporary profile. */
+async function stopBrowser() {
+  if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+  else proc.kill();
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+}
+
 async function targets() {
   try { return await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); } catch { return []; }
 }
@@ -44,7 +53,7 @@ for (let i = 0; i < 40 && !sw; i++) {
     if (await isOurs(target)) { sw = target; break; }
   }
 }
-if (!sw) { console.log('FAIL: no service worker target found', JSON.stringify((await targets()).map((t) => [t.type, t.url])), 'chrome', (await (await fetch('http://127.0.0.1:' + port + '/json/version').catch(() => null))?.json())?.Browser); proc.kill(); process.exit(1); }
+if (!sw) { console.log('FAIL: no service worker target found', JSON.stringify((await targets()).map((t) => [t.type, t.url])), 'chrome', (await (await fetch('http://127.0.0.1:' + port + '/json/version').catch(() => null))?.json())?.Browser); await stopBrowser(); process.exit(1); }
 console.log('service worker:', sw.url);
 
 const ws = new WebSocket(sw.webSocketDebuggerUrl);
@@ -102,6 +111,13 @@ console.log("connect with a bogus key:", await options.evaluate(`(async () => {
   const st = document.getElementById("keyStatus");
   return JSON.stringify({ status: st.textContent, hidden: st.hidden, stored: (await chrome.storage.local.get("ollamaApiKey")).ollamaApiKey ?? null });
 })()`));
+// "Send test" notification: what the worker answers, and what the page tells the user
+console.log("notifications: permission level", await options.evaluate("chrome.notifications.getPermissionLevel()"), "| test button:", await options.evaluate(`(async () => {
+  document.getElementById("testNotifyBtn").click();
+  await new Promise((r) => setTimeout(r, 1500));
+  const st = document.getElementById("testNotifyStatus");
+  return JSON.stringify({ text: st.textContent.slice(0, 90), hidden: st.hidden, cls: st.className });
+})()`));
 options.close();
 
 const popup = await openPage("popup.html");
@@ -117,5 +133,5 @@ console.log("pin API available:", await popup.evaluate("chrome.action.getUserSet
 popup.close();
 console.log('errors/warnings logged:', JSON.stringify(logs));
 
-ws.close(); proc.kill();
-await sleep(500);
+ws.close();
+await stopBrowser();

@@ -24,6 +24,7 @@ setKeyStorage({
 
 const store = {};
 const notes = [];
+const cleared = [];
 const icons = [];
 const titles = [];
 const badge = { text: null, color: null, textColor: null };
@@ -62,7 +63,7 @@ globalThis.chrome = {
   },
   notifications: {
     create: async (id, opts) => { notes.push({ id, opts }); },
-    clear: async () => {},
+    clear: async (id) => { cleared.push(id); },
     getPermissionLevel: async () => permissionLevel
   }
 };
@@ -233,6 +234,7 @@ await test('warning notification fires once per cycle; escalation and new cycle 
   assert.match(alerts()[0].opts.message, /Included usage at 85% \(warning threshold: 80%\)/);
   await refresh(); await refresh();
   assert.equal(alerts().length, 1, 'no repeat spam');
+  assert.ok(cleared.includes('ollama-usage-included'), 'a toast with the same id is cleared first, so Windows shows the new one instead of updating it silently');
 
   world = { ...FREE, balance: balanceUsed(96) };
   await refresh();
@@ -371,7 +373,13 @@ await test('test notification: sent when granted, reported (not sent) when the b
   const ok1 = await send({ type: 'TEST_NOTIFICATION' });
   assert.deepEqual(ok1, { success: true, level: 'granted' });
   assert.equal(notes.length, before + 1);
-  assert.equal(notes.at(-1).id, 'ollama-usage-test');
+  assert.match(notes.at(-1).id, /^ollama-usage-test-\d+$/);
+  const firstId = notes.at(-1).id;
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await send({ type: 'TEST_NOTIFICATION' });
+  assert.notEqual(notes.at(-1).id, firstId, 'every click is a new toast');
+  assert.ok(cleared.includes(firstId), 'and the previous one is removed');
+  notes.pop(); // the count checks below expect a single test notification
 
   permissionLevel = 'denied';
   const blocked = await send({ type: 'TEST_NOTIFICATION' });

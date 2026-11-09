@@ -8,8 +8,8 @@
 //
 // What it cannot judge: whether labels make sense and what a screen reader actually says.
 // That stays a manual check (docs/accessibility-testing.md).
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -59,6 +59,14 @@ const proc = spawn(browser, [
   ...(process.env.CI ? ['--no-sandbox'] : []),
   'about:blank'
 ], { stdio: 'ignore' });
+
+/** Stop the browser with all its child processes and delete its temporary profile. */
+async function stopBrowser() {
+  if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+  else proc.kill();
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+}
 
 async function openTarget(url) {
   for (let i = 0; i < 40; i++) {
@@ -160,7 +168,7 @@ try {
     }
   }
 } finally {
-  proc.kill();
+  await stopBrowser();
   server.close();
 }
 console.log(failures === 0 ? '\nNo automatic accessibility violations found.' : `\n${failures} violation type(s) found.`);
