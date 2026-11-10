@@ -105,7 +105,9 @@ function schemaError(what) {
 
 /** Usage meters from /api/balance (included credits, or legacy session + weekly windows). */
 function metersFromBalance(included) {
-  if (!included || typeof included !== 'object') throw schemaError('"included" balance');
+  // No "included" block at all (an account without plan credits): nothing to track, not an error
+  if (included === undefined || included === null) return [];
+  if (typeof included !== 'object') throw schemaError('"included" balance');
 
   if (isNumber(included.allowance_usd) && isNumber(included.balance_usd)) {
     // Accounts without included credits (e.g. pay as you go) have no window to track
@@ -147,6 +149,22 @@ function modelsFromTotals(totals) {
     rows.push({ model: 'other models', requests: rest.request_count, cost: rest.usage_usd || 0 });
   }
   return rows.filter((m) => m.requests > 0).sort((a, b) => b.requests - a.requests);
+}
+
+const MIN_SPEND_PER_DAY = 0.005;
+
+/**
+ * Average spend per day over the last 7 days plus the part of today that has passed (UTC days).
+ * @param {Array} buckets - daily buckets, today last
+ * @param {number} now - epoch ms
+ */
+function dailySpend(buckets, now) {
+  const week = buckets.slice(-8);
+  const today = week.at(-1);
+  if (!today) return 0;
+  const elapsed = Math.min(1, Math.max(0, (now - Date.parse(today.from)) / 86400000));
+  const days = week.length - 1 + elapsed;
+  return days > 0 ? week.reduce((sum, b) => sum + (b.usage_usd || 0), 0) / days : 0;
 }
 
 /** The API's 7d range is the last 8 daily buckets (7 days ago at 00:00 UTC up to today). */
@@ -193,7 +211,7 @@ function modelRanges(month) {
  * @param {{balance: Object, day: Object, month: Object}} raw
  * @returns {Object} usage data with status "ok" (lastFetch is added by the caller)
  */
-export function buildUsage({ balance, day, month }) {
+export function buildUsage({ balance, day, month }, now = Date.now()) {
   if (!balance || typeof balance !== 'object') throw schemaError('balance');
   if (!Array.isArray(day?.buckets)) throw schemaError('24h usage');
   if (!Array.isArray(month?.buckets)) throw schemaError('30-day usage');
@@ -202,6 +220,16 @@ export function buildUsage({ balance, day, month }) {
 
   const purchased = balance.purchased?.balance_usd;
   const credits = isNumber(purchased) ? { amount: purchased, text: formatUsd(purchased) } : null;
+
+  // Pay as you go (no included credits): how long the balance lasts at the recent pace. With
+  // included credits the pace says nothing about the purchased balance, which is used second.
+  if (credits && meters.length === 0 && credits.amount > 0) {
+    const perDay = dailySpend(month.buckets, now);
+    if (perDay >= MIN_SPEND_PER_DAY) {
+      credits.perDay = perDay;
+      credits.runwayDays = credits.amount / perDay;
+    }
+  }
 
   // The usage page lists requests two weeks back; the API has no per-request detail, so days stand in for them
   const recentDays = month.buckets

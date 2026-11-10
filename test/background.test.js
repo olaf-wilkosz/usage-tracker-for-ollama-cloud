@@ -250,7 +250,60 @@ await test('pay-as-you-go account (no included credits): default icon + credits 
   assert.equal(store.ollamaUsageData.credits.text, '$12.50');
   assert.ok(icons.at(-1).path, 'static icon');
   assert.equal(titles.at(-1), 'Usage Tracker for Ollama Cloud\nCredits: $12.50');
-  assert.equal(badge.text, '', 'badge cleared');
+  assert.deepEqual(badge, { text: '$12', color: '#2e7d32', textColor: '#ffffff' }, 'the balance is the number that matters: green badge with dollars');
+  assert.ok(store.ollamaUsageData.credits.runwayDays > 90, 'a tiny recent spend means a very long runway');
+});
+
+await test('pay as you go: low credits and empty credits notify once when the balance drops, never at the first reading', async () => {
+  const payg = (amount) => ({ included: { balance_usd: 0, allowance_usd: 0, period: { from: 'a', until: 'b' } }, purchased: { balance_usd: amount } });
+  const credit = () => notes.filter((n) => n.id === 'ollama-usage-credits');
+  const startNotes = credit().length;
+  delete store.ollamaCreditsState; // as after a fresh start
+
+  world = { ...FREE, balance: payg(0) }; // an account that begins at $0 is not news
+  await refresh();
+  assert.equal(credit().length, startNotes);
+  assert.deepEqual(badge, { text: '$0', color: '#c62828', textColor: '#ffffff' });
+
+  world = { ...FREE, balance: payg(20) };
+  await refresh();
+  assert.equal(credit().length, startNotes, 'plenty of credits: quiet');
+
+  world = { ...FREE, balance: payg(4.2) }; // default alert level is $5
+  await refresh();
+  assert.equal(credit().length, startNotes + 1);
+  assert.match(credit().at(-1).opts.message, /\$4\.20 of credits left \(alert at \$5\.00\)/);
+  assert.deepEqual(badge, { text: '$4.2', color: '#f57c00', textColor: '#1a1a1a' });
+  await refresh();
+  assert.equal(credit().length, startNotes + 1, 'not repeated');
+
+  world = { ...FREE, balance: payg(0) };
+  await refresh();
+  assert.equal(credit().length, startNotes + 2, 'running out is worse than running low');
+  assert.match(credit().at(-1).opts.message, /used up/);
+
+  world = { ...FREE, balance: payg(30) }; // topped up
+  await refresh();
+  world = { ...FREE, balance: payg(3) };
+  await refresh();
+  assert.equal(credit().length, startNotes + 3, 'a new drop after a top-up notifies again');
+
+  store.settings = { ...store.settings, lowCreditsUsd: 0 }; // alert off: only "empty" remains
+  world = { ...FREE, balance: payg(40) };
+  await refresh();
+  world = { ...FREE, balance: payg(1) };
+  await refresh();
+  assert.equal(credit().length, startNotes + 3, 'level 0 = no low-credits alert');
+  store.settings = { ...store.settings, lowCreditsUsd: 5 };
+});
+
+await test('an account with included credits never gets credits alerts or a dollar badge', async () => {
+  const before = notes.filter((n) => n.id === 'ollama-usage-credits').length;
+  world = { ...FREE, balance: { ...balanceUsed(10), purchased: { balance_usd: 0.5 } } };
+  await refresh();
+  assert.equal(notes.filter((n) => n.id === 'ollama-usage-credits').length, before);
+  assert.equal(badge.text, '10', 'percentage badge as before');
+  assert.equal(store.ollamaUsageData.credits.runwayDays, undefined);
 });
 
 await test('legacy plan (session + weekly) -> concentric rings, badge empty', async () => {
@@ -347,7 +400,7 @@ await test('settings: v1.0 stored keys migrate through GET_SETTINGS and onInstal
   store.settings = { refreshIntervalMinutes: 15, notifyThresholdSession: 70, notifyThresholdWeekly: 90, notifyEnabled: true };
   assert.equal((await send({ type: 'GET_SETTINGS' })).settings.notifyWarning, 70);
   await handlers.installed({ reason: 'update' });
-  assert.deepEqual(store.settings, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: true, showPeakBanner: true });
+  assert.deepEqual(store.settings, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: true, showPeakBanner: true, lowCreditsUsd: 5 });
 });
 
 await test('test notification: sent when granted, reported (not sent) when the browser blocks it', async () => {

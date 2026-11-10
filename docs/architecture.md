@@ -36,6 +36,10 @@ Saving or removing the key bumps an epoch counter; a refresh that was reading wi
 
 `modelsByRange` has three entries `{ from, to, models }`, all from the one 30-day response (daily buckets start at 00:00 UTC, so each range is exact): `month` = the buckets from the 1st of the current UTC month (what ollama.com's usage page shows: "Nov 1–8, UTC", verified on a real account: 95 requests, $0.26), `7d` = the last 8 buckets (what the API's own `range=7d` returns) and `30d` = the response totals. No extra request is needed. The popup defaults to the month.
 
+### Pay as you go
+
+Ollama dropped the Free plan with included usage in November 2026: an account without a plan has `included.allowance_usd = 0` (or no `included` block), so there is no meter and the purchased credits are the only number. For such accounts the toolbar shows the balance as the badge ("$12", red at $0, orange at or below the alert level), the popup says how long it lasts at the recent pace (last 7 UTC days plus today so far) and `checkCreditNotifications` alerts once when the balance drops to the "low" level or runs out (never at the first reading, never again until the balance has been above the level). With included credits (Pro, Max, Team) none of this applies: the pace says nothing about the purchased part, which is used second.
+
 ### Activity
 
 `covered` lists the hour ranges the extension has actually read (merged on every refresh; a gap appears when the browser was closed for more than a day) and `daysFrom` the first day of the 30-day series. The heatmap hatches cells outside them: "not recorded yet" is different from "zero requests".
@@ -64,7 +68,7 @@ Early versions read `ollama.com/settings` with the user's session cookies and pa
 1. Ollama's terms forbid automated access to the service without permission; the documented API is the sanctioned route.
 2. HTML parsing broke whenever the page changed (it did, with the new billing).
 3. It needed the `offscreen` permission (DOMParser) and broad host access with cookies.
-4. The API documents the paid-plan shapes too, which a Free-account developer could never test against the page.
+4. The API documents the paid-plan shapes too, which a developer on a pay-as-you-go account could never test against the page.
 
 Trade-offs accepted: the user must create an API key; per-request detail (the old "Recent requests" table) is gone in favour of hourly buckets; model colors are no longer read from the page (a small table of observed colors plus a hash fallback, decorative only).
 

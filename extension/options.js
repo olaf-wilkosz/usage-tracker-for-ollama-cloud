@@ -5,7 +5,7 @@
 
 import {
   DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
-  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, testNotificationMessage, saveApiKey, removeApiKey
+  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, testNotificationMessage, describeBuild, saveApiKey, removeApiKey
 } from './settings.js';
 
 // DOM elements
@@ -26,6 +26,8 @@ const elements = {
   refreshInterval: document.getElementById('refreshInterval'),
   notifyWarning: document.getElementById('notifyWarning'),
   notifyCritical: document.getElementById('notifyCritical'),
+  lowCreditsUsd: document.getElementById('lowCreditsUsd'),
+  buildInfo: document.getElementById('buildInfo'),
   notifyEnabled: document.getElementById('notifyEnabled'),
   showPeakBanner: document.getElementById('showPeakBanner'),
   testNotifyBtn: document.getElementById('testNotifyBtn'),
@@ -44,6 +46,7 @@ function populateForm(settings) {
   elements.refreshInterval.value = String(settings.refreshIntervalMinutes);
   elements.notifyWarning.value = String(settings.notifyWarning);
   elements.notifyCritical.value = String(settings.notifyCritical);
+  elements.lowCreditsUsd.value = String(settings.lowCreditsUsd);
   elements.notifyEnabled.checked = settings.notifyEnabled;
   elements.showPeakBanner.checked = settings.showPeakBanner;
 }
@@ -56,6 +59,7 @@ function collectSettings() {
     refreshIntervalMinutes: parseInt(elements.refreshInterval.value, 10),
     notifyWarning: parseInt(elements.notifyWarning.value, 10),
     notifyCritical: parseInt(elements.notifyCritical.value, 10),
+    lowCreditsUsd: parseFloat(elements.lowCreditsUsd.value),
     notifyEnabled: elements.notifyEnabled.checked,
     showPeakBanner: elements.showPeakBanner.checked
   };
@@ -106,6 +110,7 @@ async function showDoneNotice() {
  */
 async function init() {
   elements.version.textContent = chrome.runtime.getManifest().version;
+  elements.buildInfo.textContent = await describeBuild();
   await syncKeyState();
 
   elements.saveKeyBtn.addEventListener('click', async () => {

@@ -8,6 +8,8 @@
 - **Robustness:** last good numbers stay on screen (marked stale) when the API is briefly unreachable.
 - **Accessibility:** text and badge colors meet WCAG AA.
 - **Robustness:** a 429 is honoured (no requests until Retry-After has passed); the 30-day series is cached for 10 minutes (two calls per refresh instead of three); saving or removing the key during a refresh can no longer be overwritten by that refresh; the options page shows "Connected" only for a key Ollama accepts.
+- **Pay as you go** (Ollama ended the Free plan with included usage in November 2026): the credits balance is shown as the toolbar badge, the popup estimates how many days it lasts at the recent pace, and a "Low credits" alert (default $5, 0 = off) fires once when it drops, plus one when it runs out. An account without an `included` block is no longer an error.
+- **Which copy is this?** The settings show the version and either the build (commit, time) or, for an unpacked folder, when the browser loaded it, so a stale copy in one browser is easy to spot.
 - **Notifications:** a toast shown under the same id is cleared first (Windows can update such a toast silently instead of popping it up), "Send test" uses a fresh id on every click and explains where to look when nothing shows.
 - **Key management in the popup:** Settings has the account group (connected or not, paste a new key to replace it, remove it); no more detour to the options page.
 - **Recent activity** lists the last 24 hours by hour and the last 14 days by day (the API has no per-request detail).

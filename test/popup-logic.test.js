@@ -38,6 +38,15 @@ test('formatDayRange: like the date range on the usage page', () => {
   assert.equal(L.formatDayRange(null, '2026-11-09'), '');
 });
 
+test('formatRunway: days of credits left in words', () => {
+  assert.equal(L.formatRunway(0.4), 'less than a day');
+  assert.equal(L.formatRunway(1.5), '1 day');
+  assert.equal(L.formatRunway(12.4), '12 days');
+  assert.equal(L.formatRunway(89.6), '90 days');
+  assert.equal(L.formatRunway(90), '90+ days');
+  assert.equal(L.formatRunway(5000), '90+ days');
+});
+
 test('formatDay: weekday and date of a UTC day', () => {
   assert.equal(L.formatDay('2026-11-08'), 'Sun, Nov 8');
   assert.equal(L.formatDay('2026-11-09'), 'Mon, Nov 9');

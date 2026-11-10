@@ -10,9 +10,9 @@
 import { formatResetTime, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
-  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, testNotificationMessage, DEFAULT_SETTINGS
+  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, testNotificationMessage, describeBuild, DEFAULT_SETTINGS
 } from './settings.js';
-import { buildLegendItems, summarizeActivity, formatDay, formatDayRange, rangeEntry } from './popup-logic.js';
+import { buildLegendItems, summarizeActivity, formatDay, formatDayRange, formatRunway, rangeEntry } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
 import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
@@ -76,6 +76,8 @@ const elements = {
   refreshInterval: document.getElementById('refreshInterval'),
   notifyWarning: document.getElementById('notifyWarning'),
   notifyCritical: document.getElementById('notifyCritical'),
+  lowCreditsUsd: document.getElementById('lowCreditsUsd'),
+  buildInfo: document.getElementById('buildInfo'),
   notifyEnabled: document.getElementById('notifyEnabled'),
   showPeakBanner: document.getElementById('showPeakBanner'),
   testNotifyBtn: document.getElementById('testNotifyBtn'),
@@ -231,7 +233,11 @@ function renderCredits(credits) {
     link.href = OLLAMA_BILLING_URL;
     link.target = '_blank';
     link.rel = 'noopener';
-    elements.creditsNote.append('No credits yet. ', link);
+    elements.creditsNote.append('No credits left. ', link);
+    elements.creditsNote.hidden = false;
+  } else if (credits.runwayDays) {
+    // Pay as you go: how long the balance lasts at the recent pace
+    elements.creditsNote.textContent = `About ${formatRunway(credits.runwayDays)} left at ${formatUsd(credits.perDay)}/day (last 7 days).`;
     elements.creditsNote.hidden = false;
   } else {
     elements.creditsNote.hidden = true;
@@ -483,7 +489,7 @@ function updatePeakBanner() {
   elements.peakTitle.textContent = isPeak ? 'Peak pricing' : 'Off-peak pricing';
   elements.peakDetail.textContent = `${isPeak ? 'Off-peak' : 'Peak'} in ${formatResetTime(secondsToChange)}`;
   elements.peakBanner.title = 'Based on the pricing hours published at ollama.com/pricing '
-    + '(weekdays 12:00–18:00 UTC are peak, everything else off-peak). Not read from your account.';
+    + '(weekdays 12:00–18:00 UTC are peak, everything else off-peak). Only some models have off-peak rates. Not read from your account.';
   elements.peakBanner.hidden = false;
 }
 
@@ -660,6 +666,7 @@ function populateSettingsForm(settings) {
   elements.refreshInterval.value = String(settings.refreshIntervalMinutes);
   elements.notifyWarning.value = String(settings.notifyWarning);
   elements.notifyCritical.value = String(settings.notifyCritical);
+  elements.lowCreditsUsd.value = String(settings.lowCreditsUsd);
   elements.notifyEnabled.checked = settings.notifyEnabled;
   elements.showPeakBanner.checked = settings.showPeakBanner;
 }
@@ -669,6 +676,7 @@ function collectSettingsForm() {
     refreshIntervalMinutes: parseInt(elements.refreshInterval.value, 10),
     notifyWarning: parseInt(elements.notifyWarning.value, 10),
     notifyCritical: parseInt(elements.notifyCritical.value, 10),
+    lowCreditsUsd: parseFloat(elements.lowCreditsUsd.value),
     notifyEnabled: elements.notifyEnabled.checked,
     showPeakBanner: elements.showPeakBanner.checked
   };
@@ -737,6 +745,7 @@ async function removeKey() {
 }
 
 async function openSettingsView() {
+  elements.buildInfo.textContent = await describeBuild();
   const settings = await loadSettings();
   populateSettingsForm(settings);
   await syncAccountGroup();

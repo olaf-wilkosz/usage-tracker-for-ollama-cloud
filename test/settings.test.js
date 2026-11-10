@@ -5,7 +5,7 @@ import * as S from '../extension/settings.js';
 
 test('migrateSettings: v1.0 keys carried over, old keys removed, new defaults added', () => {
   const m = S.migrateSettings({ refreshIntervalMinutes: 15, notifyThresholdSession: 70, notifyThresholdWeekly: 90, notifyEnabled: false });
-  assert.deepEqual(m, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: false, showPeakBanner: true });
+  assert.deepEqual(m, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: false, showPeakBanner: true, lowCreditsUsd: 5 });
   assert.deepEqual(S.migrateSettings(undefined), S.DEFAULT_SETTINGS);
   assert.equal(S.migrateSettings({ notifyWarning: 50, notifyThresholdSession: 70 }).notifyWarning, 50, 'new key wins');
 });
@@ -30,6 +30,25 @@ test('isPinnedToToolbar: true / false when the browser says, null when it cannot
   assert.equal(await S.isPinnedToToolbar(), null, 'API failing');
   globalThis.chrome = { action: { getUserSettings: async () => ({}) } };
   assert.equal(await S.isPinnedToToolbar(), null, 'unexpected answer');
+  delete globalThis.chrome;
+});
+
+test('validateSettings: the low credits alert is 0 (off) or more dollars', () => {
+  assert.deepEqual(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: 0 }), []);
+  assert.deepEqual(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: 12.5 }), []);
+  assert.ok(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: -1 }).length);
+  assert.ok(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: NaN }).length);
+});
+
+test('describeBuild: an unpacked source folder says when it was loaded', async () => {
+  globalThis.chrome = {
+    runtime: { getManifest: () => ({ version: '1.2.0' }) },
+    storage: { local: { get: async () => ({ ollamaInstalledAt: '2026-11-11T08:10:00Z' }) } }
+  };
+  const text = await S.describeBuild();
+  assert.match(text, /^Version 1\.2\.0 · source folder · loaded /);
+  globalThis.chrome.storage.local.get = async () => ({});
+  assert.equal(await S.describeBuild(), 'Version 1.2.0 · source folder');
   delete globalThis.chrome;
 });
 

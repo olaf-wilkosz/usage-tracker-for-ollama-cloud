@@ -7,6 +7,7 @@
 // Chrome gets extension/ as it is. Firefox gets the same files with a background "event
 // page" instead of a service worker plus its add-on id and data-collection declaration.
 // For development, Chrome can load extension/ directly; Firefox loads dist/firefox.
+import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +42,14 @@ function manifestFor(target) {
   };
 }
 
+/** Commit and time of this build; "+local" marks uncommitted changes. */
+function buildInfo() {
+  const git = (...args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+  const commit = git('rev-parse', '--short', 'HEAD').stdout?.trim() || 'unknown';
+  const dirty = Boolean(git('status', '--porcelain').stdout?.trim());
+  return { commit: dirty ? `${commit}+local` : commit, builtAt: new Date().toISOString() };
+}
+
 function listFiles(dir) {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -53,6 +62,7 @@ function build(target) {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   cpSync(SRC, out, { recursive: true });
+  writeFileSync(join(out, 'build-info.js'), `export const BUILD = ${JSON.stringify(buildInfo())};\n`);
   writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifestFor(target), null, 2)}\n`);
 
   // Zip with the manifest at the archive root, files in a stable order

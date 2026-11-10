@@ -48,6 +48,14 @@ export function formatDayRange(from, to) {
   return `${MONTH_NAMES[fm - 1]} ${fd} – ${MONTH_NAMES[tm - 1]} ${td}`;
 }
 
+/** "less than a day", "1 day", "12 days", "90+ days" for a number of days of credits left. */
+export function formatRunway(days) {
+  if (days < 1) return 'less than a day';
+  if (days < 2) return '1 day';
+  if (days >= 90) return '90+ days';
+  return `${Math.round(days)} days`;
+}
+
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** "Sun, Nov 8" for a YYYY-MM-DD UTC day. */

@@ -4,12 +4,15 @@
  * drift apart. This module is the single source of truth for defaults and migrations.
  */
 
+import { BUILD } from './build-info.js';
+
 export const DEFAULT_SETTINGS = {
   refreshIntervalMinutes: 5,
   notifyWarning: 80,
   notifyCritical: 95,
   notifyEnabled: true,
-  showPeakBanner: true
+  showPeakBanner: true,
+  lowCreditsUsd: 5 // pay as you go: alert when purchased credits fall to this many dollars (0 = off)
 };
 
 /**
@@ -63,6 +66,18 @@ export async function saveSettings(settings) {
       }
     });
   });
+}
+
+/**
+ * Which copy of the extension this is, for the settings: packages built by scripts/build.mjs
+ * carry their commit and build time; an unpacked source folder says when the browser loaded it.
+ * Handy when two browsers seem to show different things: one of them runs an older copy.
+ */
+export async function describeBuild() {
+  const version = chrome.runtime.getManifest().version;
+  if (BUILD) return `Version ${version} · build ${BUILD.commit} · ${BUILD.builtAt.slice(0, 16).replace('T', ' ')} UTC`;
+  const { ollamaInstalledAt } = await chrome.storage.local.get('ollamaInstalledAt');
+  return `Version ${version} · source folder${ollamaInstalledAt ? ` · loaded ${new Date(ollamaInstalledAt).toLocaleString()}` : ''}`;
 }
 
 /** What to tell the user after "Send test" (shared by the popup and the options page). */
@@ -222,6 +237,9 @@ export function validateSettings(settings) {
   }
   if (!(settings.notifyCritical >= 1 && settings.notifyCritical <= 100)) {
     errors.push('Critical threshold must be between 1 and 100');
+  }
+  if (!(settings.lowCreditsUsd >= 0)) {
+    errors.push('Low credits alert must be 0 (off) or more dollars');
   }
   if (errors.length === 0 && settings.notifyWarning > settings.notifyCritical) {
     errors.push('Warning threshold must not exceed critical');

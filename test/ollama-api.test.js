@@ -132,11 +132,51 @@ test('buildUsage: edge cases', () => {
   for (const range of Object.values(u.modelsByRange)) assert.deepEqual(range.models, []);
 });
 
+test('buildUsage: an account without an included block has no meters but keeps its credits', () => {
+  for (const included of [null, undefined]) {
+    const data = raw();
+    data.balance = { included, purchased: { balance_usd: 3 } };
+    const usage = Api.buildUsage(data);
+    assert.deepEqual(usage.meters, []);
+    assert.equal(usage.credits.amount, 3);
+  }
+});
+
+test('buildUsage: pay as you go shows how long the credits last at the recent pace', () => {
+  // 8 daily buckets ending "today" (2026-11-08, noon UTC => half a day elapsed): $3.00 spent in total
+  const data = raw();
+  data.balance = { included: { balance_usd: 0, allowance_usd: 0, period: {} }, purchased: { balance_usd: 15 } };
+  data.month.buckets = data.month.buckets.map((b) => ({ ...b, usage_usd: 0 }));
+  data.month.buckets.at(-1).usage_usd = 0.5;
+  data.month.buckets.at(-4).usage_usd = 2.5;
+  const noon = Date.parse('2026-11-08T12:00:00Z');
+  const { credits } = Api.buildUsage(data, noon);
+  assert.ok(Math.abs(credits.perDay - 3 / 7.5) < 1e-9, `perDay ${credits.perDay}`);
+  assert.ok(Math.abs(credits.runwayDays - 15 / (3 / 7.5)) < 1e-9);
+
+  // no recent spend, no balance, or included credits: no runway
+  data.month.buckets.forEach((b) => { b.usage_usd = 0; });
+  assert.equal(Api.buildUsage(data, noon).credits.runwayDays, undefined);
+  data.month.buckets.at(-1).usage_usd = 1;
+  data.balance.purchased.balance_usd = 0;
+  assert.equal(Api.buildUsage(data, noon).credits.runwayDays, undefined);
+  data.balance = { included: { balance_usd: 5, allowance_usd: 10, period: {} }, purchased: { balance_usd: 15 } };
+  assert.equal(Api.buildUsage(data, noon).credits.runwayDays, undefined, 'the pace does not say how long the purchased part lasts');
+});
+
+test('usage helpers: toolbar badge text and colors for a credits balance', () => {
+  assert.deepEqual([0, -1, 0.04, 5.43, 9.99, 10, 125.9, 999.9, 1500, 250000].map(U.formatBadgeAmount), ['$0', '$0', '$0.0', '$5.4', '$9.9', '$10', '$125', '$999', '$1k', '$99k']);
+  assert.deepEqual(U.getCreditsBadgeStyle(0, 5), { color: '#c62828', textColor: '#ffffff' });
+  assert.deepEqual(U.getCreditsBadgeStyle(5, 5), { color: '#f57c00', textColor: '#1a1a1a' }, 'at the level counts as low');
+  assert.deepEqual(U.getCreditsBadgeStyle(5.01, 5), { color: '#2e7d32', textColor: '#ffffff' });
+  assert.deepEqual(U.getCreditsBadgeStyle(1, 0), { color: '#2e7d32', textColor: '#ffffff' }, 'alert off: never orange');
+});
+
 test('buildUsage: unexpected shapes are schema errors, not crashes', () => {
   for (const broken of [
     { ...raw(), balance: null },
     { ...raw(), balance: { included: {}, purchased: { balance_usd: 0 } } },
-    { ...raw(), balance: { included: null } },
+    { ...raw(), balance: { included: 'nope' } },
     { ...raw(), day: {} },
     { ...raw(), month: { buckets: 'nope' } }
   ]) {

@@ -24,6 +24,7 @@ Usage Tracker for Ollama Cloud puts your usage in the toolbar: a ring and a perc
 WHAT YOU GET
 • Live toolbar badge with your included usage in percent
 • Included credits (what is left, when it refills) and purchased credits
+• Pay as you go: the credits balance on the toolbar badge, how many days it lasts at your recent pace, and a low-credits alert
 • Models breakdown for this month (as on ollama.com), the last 7 days or the last 30 days: requests, share and cost per model
 • Keyboard shortcut Alt+Shift+U to open the popup
 • Recent activity by hour, plus an activity heatmap (last week by hour, last 30 days by day)

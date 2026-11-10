@@ -50,10 +50,10 @@
         <p class="section-lead">Built on the official Ollama API, so it keeps working when ollama.com changes its pages.</p>
         <div class="grid">
           <div class="card"><span class="icon" aria-hidden="true">◔</span><h3>Live toolbar badge</h3><p>A ring and a percentage on the toolbar icon: green, orange, red. You see where you stand without opening anything.</p></div>
-          <div class="card"><span class="icon" aria-hidden="true">$</span><h3>Credits and refills</h3><p>What is left of your included usage, when it refills, and your purchased credit balance. Legacy session and weekly windows are supported too.</p></div>
+          <div class="card"><span class="icon" aria-hidden="true">$</span><h3>Credits and refills</h3><p>Included usage and when it refills, your credit balance and, on pay as you go, how many days it lasts at your recent pace. Legacy session and weekly windows too.</p></div>
           <div class="card"><span class="icon" aria-hidden="true">◍</span><h3>Models breakdown</h3><p>Requests and cost per model for this month (like the usage page on ollama.com), the last 7 days or the last 30 days, plus the busiest recent hours.</p></div>
           <div class="card"><span class="icon" aria-hidden="true">▦</span><h3>Activity heatmap</h3><p>Your last week by hour and the last 30 days by day. See when you actually use Ollama.</p></div>
-          <div class="card"><span class="icon" aria-hidden="true">🔔</span><h3>Alerts that don't nag</h3><p>A warning and a critical threshold you choose. One notification per cycle, again only if it gets worse or the window resets.</p></div>
+          <div class="card"><span class="icon" aria-hidden="true">🔔</span><h3>Alerts that don't nag</h3><p>A warning and a critical threshold you choose, and a low-credits alert on pay as you go. One notification per cycle, again only if it gets worse.</p></div>
           <div class="card"><span class="icon" aria-hidden="true">◑</span><h3>Peak / off-peak banner</h3><p>Shows whether Ollama's published peak pricing hours are on, and when they change. Computed locally from the pricing page's schedule.</p></div>
         </div>
       </section>
@@ -99,7 +99,7 @@
       <section id="faq" aria-labelledby="faq-h">
         <h2 id="faq-h">Questions</h2>
         <details><summary>Is this an official Ollama product?</summary><p>No. It is an independent, unofficial project and is not affiliated with or endorsed by Ollama. It uses Ollama's public, documented API.</p></details>
-        <details><summary>Which plans does it support?</summary><p>It follows the official API documentation for included credits, purchased credits and the older session and weekly windows. It has been tested against a Free account; if something looks off on another plan, the diagnostics button in the settings gives you a report you can attach to an issue.</p></details>
+        <details><summary>Which plans does it support?</summary><p>All of them, following the official API documentation: pay as you go (credits balance, spend and a low-credits alert), plans with included monthly credits (Pro, Max, Team) and the older session and weekly windows. It was developed against a pay-as-you-go account (the former Free plan); the other shapes come from the documentation and could not be tried on real accounts. If something looks off, the diagnostics button in the settings gives you a report you can attach to an issue.</p></details>
         <details><summary>Why does it need an API key?</summary><p>The usage API only answers requests that carry an API key. Pages on ollama.com are not scraped, so nothing breaks when the website changes.</p></details>
         <details><summary>Can the key be read-only?</summary><p>Not today: Ollama API keys have no scopes. That is why the extension keeps the key encrypted, sends it only to ollama.com and lets you remove it with one click.</p></details>
         <details><summary>Which browsers?</summary><p>Chrome, Edge and Brave today; a Firefox build is in progress.</p></details>

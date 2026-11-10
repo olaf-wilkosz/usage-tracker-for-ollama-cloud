@@ -4,7 +4,7 @@
  *
  * Usage data shape (stored under "ollamaUsageData"):
  *   { status, meters: [{ id, label, usedPercent, detail, resetsAt, resetVerb }],
- *     credits: { amount, text } | null,
+ *     credits: { amount, text, perDay?, runwayDays? } | null,
  *     modelsByRange: { month|7d|30d: { from, to, models: [{ model, requests, cost }] } },
  *     recentHours: [{ from, requests, cost, models: [{ model, requests }] }],
  *     recentDays: [{ date, requests, cost, models: [{ model, requests }] }],
@@ -89,6 +89,28 @@ export function getBadgeStyle(percent) {
   if (percent === null) return { color: '#5f6368', textColor: '#ffffff' };
   if (percent >= 90) return { color: '#c62828', textColor: '#ffffff' };
   if (percent >= 70) return { color: '#f57c00', textColor: '#1a1a1a' };
+  return { color: '#2e7d32', textColor: '#ffffff' };
+}
+
+/**
+ * Short dollar text for the toolbar badge (about four characters): "$0", "$5.4", "$125", "$2k".
+ * @param {number} amount
+ */
+export function formatBadgeAmount(amount) {
+  if (!(amount > 0)) return '$0';
+  if (amount < 10) return `$${(Math.floor(amount * 10) / 10).toFixed(1)}`;
+  if (amount < 1000) return `$${Math.floor(amount)}`;
+  return `$${Math.min(99, Math.floor(amount / 1000))}k`;
+}
+
+/**
+ * Badge colors for a credits balance: red when empty, orange at or below the alert level.
+ * @param {number} amount
+ * @param {number} lowUsd - the "low credits" alert level; 0 = off
+ */
+export function getCreditsBadgeStyle(amount, lowUsd) {
+  if (!(amount > 0)) return { color: '#c62828', textColor: '#ffffff' };
+  if (lowUsd > 0 && amount <= lowUsd) return { color: '#f57c00', textColor: '#1a1a1a' };
   return { color: '#2e7d32', textColor: '#ffffff' };
 }
 
