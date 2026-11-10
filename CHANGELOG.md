@@ -15,7 +15,7 @@
 - **Models range:** the calendar month so far (UTC, default: it is exactly what the usage page on ollama.com shows, "Nov 1–8, UTC"), 7 days or 30 days, all derived from the same daily data with a date caption and total cost; no extra request.
 - **Heatmap:** cells that were never recorded (before the extension started, or while the browser was closed for more than a day) are hatched instead of looking like zero requests.
 - **Keyboard:** optional shortcut Alt+Shift+U opens the popup; manual keyboard / screen-reader test script in docs/accessibility-testing.md.
-- **First run:** the setup step opens in the popup right after install where the browser allows it (otherwise a welcome tab that shows only the connect step, then confirms "You're all set" and what to do next).
+- **First run:** a welcome tab with only the connect step, then "You're all set" and what to do next. (Opening the popup on install was tried and dropped: opened without a click it can end up in a window that is not focused and stays on screen.)
 - **Accessibility:** `lang` on all extension pages, pressed state on the range toggles, heatmap hidden from assistive technology and replaced by a text summary; `npm run a11y` (axe-core) added.
 - **Setup in the popup:** create-a-key link, paste field and Connect button right in the popup; a dismissible hint to pin the extension to the toolbar (shown only while it is not pinned). The title bar now reads "Usage Tracker for Ollama Cloud"; the footer links to ollama.com/settings/usage.
 - **Name:** renamed to "Usage Tracker for Ollama Cloud" and marked as unofficial.

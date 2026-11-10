@@ -512,28 +512,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * Show the setup step: the popup where the browser opens it, else the welcome tab. Some
- * browsers accept openPopup() and show nothing (no focused window), so where the popup
- * can be queried it is checked.
- */
-async function showSetup() {
-  try {
-    await chrome.action.openPopup();
-    if (chrome.runtime.getContexts) {
-      // Give a slow machine up to ~1.5 s to show it
-      let shown = false;
-      for (let attempt = 0; attempt < 5 && !shown; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        shown = (await chrome.runtime.getContexts({ contextTypes: ['POPUP'] })).length > 0;
-      }
-      if (!shown) throw new Error('The popup did not open');
-    }
-  } catch {
-    chrome.runtime.openOptionsPage();
-  }
-}
-
-/**
  * Initialize on install/update
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -549,11 +527,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Do initial fetch (shows the "!" setup badge until an API key is saved)
   await refreshUsage();
 
-  // First run: show the setup step right away. The popup is the preferred place (it has the
-  // whole setup inline); browsers that refuse to open it without a click (Firefox, older
-  // Chrome) get a welcome tab with the same step instead.
+  // First run: a welcome tab with the connect step. (action.openPopup() was tried instead and
+  // dropped: opened without a click it can appear in a window that is not focused, never gets
+  // the blur that dismisses a popup, and stays on screen.)
   if (details.reason === 'install') {
-    await showSetup();
+    chrome.runtime.openOptionsPage();
   }
 });
 

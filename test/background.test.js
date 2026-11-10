@@ -121,32 +121,14 @@ await test('before setup: refresh reports no_key and the toolbar nudges to conne
   assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false, status: 'no_key' });
 });
 
-await test('first install: setup opens in the popup when the browser allows it, else as a welcome tab', async () => {
-  // no action.openPopup in the stub (like Firefox, which refuses it without a click): welcome tab
+await test('first install opens the welcome tab (and only then); it never opens a popup', async () => {
+  let popups = 0;
+  chrome.action.openPopup = async () => { popups++; };
   await handlers.installed({ reason: 'install' });
   assert.equal(openedOptions, 1);
   await handlers.installed({ reason: 'update' });
   assert.equal(openedOptions, 1, 'updates do not');
-
-  let popups = 0;
-  chrome.action.openPopup = async () => { popups++; };
-  await handlers.installed({ reason: 'install' });
-  assert.equal(popups, 1);
-  assert.equal(openedOptions, 1, 'no extra tab when the popup opened');
-
-  chrome.action.openPopup = async () => { throw new Error('No active browser window'); };
-  await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, 2, 'refused popup falls back to the tab');
-
-  // accepted but nothing appeared (no focused window): where the popup can be queried, fall back too
-  chrome.runtime.getContexts = async () => [];
-  chrome.action.openPopup = async () => { popups++; };
-  await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, 3, 'a popup that never showed up falls back to the tab');
-  chrome.runtime.getContexts = async () => [{}];
-  await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, 3, 'a visible popup does not');
-  delete chrome.runtime.getContexts;
+  assert.equal(popups, 0, 'a popup opened without a click can end up as an undismissable window');
   delete chrome.action.openPopup;
 });
 

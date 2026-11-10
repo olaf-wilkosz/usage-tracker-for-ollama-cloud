@@ -18,7 +18,7 @@ import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const OLLAMA_BILLING_URL = 'https://ollama.com/settings';
+const OLLAMA_BILLING_URL = 'https://ollama.com/settings/billing';
 const COUNTDOWN_REFRESH_MS = 30000;
 const RESET_PROGRESSIVE = { Resets: 'Resetting', Refills: 'Refilling', Renews: 'Renewing' };
 
@@ -213,7 +213,7 @@ function renderMeters(meters, status) {
     elements.metersContainer.appendChild(buildMeterBlock(meter));
   }
   if (meters.length === 0 && status === 'ok') {
-    elements.metersContainer.appendChild(el('div', 'empty-note', 'Your plan has no included usage to track.'));
+    elements.metersContainer.appendChild(el('div', 'empty-note', 'No included usage on this plan (pay as you go): requests are billed per token from your credits.'));
   }
 }
 
