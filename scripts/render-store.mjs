@@ -31,10 +31,11 @@ if (!browser) throw new Error('No Chromium-based browser found; set BROWSER=path
 // [page under the preview server (or a /path), output file (relative to the repo), width, height, scale]
 const JOBS = [
   ['store/slides/01-overview.html', 'store/screenshots/01-overview.png', 1280, 800],
-  ['store/slides/02-alerts.html', 'store/screenshots/02-alerts.png', 1280, 800],
-  ['store/slides/03-models.html', 'store/screenshots/03-models.png', 1280, 800],
-  ['store/slides/04-activity.html', 'store/screenshots/04-activity.png', 1280, 800],
-  ['store/slides/05-private.html', 'store/screenshots/05-private.png', 1280, 800],
+  ['store/slides/02-payg.html', 'store/screenshots/02-payg.png', 1280, 800],
+  ['store/slides/03-alerts.html', 'store/screenshots/03-alerts.png', 1280, 800],
+  ['store/slides/04-models.html', 'store/screenshots/04-models.png', 1280, 800],
+  ['store/slides/05-activity.html', 'store/screenshots/05-activity.png', 1280, 800],
+  ['store/slides/06-private.html', 'store/screenshots/06-private.png', 1280, 800],
   ['store/promo/small-440x280.html', 'store/promo/small-440x280.png', 440, 280],
   ['store/promo/marquee-1400x560.html', 'store/promo/marquee-1400x560.png', 1400, 560],
   ['store/promo/og-1200x630.html', 'store/promo/og-1200x630.png', 1200, 630],

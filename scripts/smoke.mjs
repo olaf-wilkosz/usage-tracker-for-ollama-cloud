@@ -97,7 +97,7 @@ console.log('manifest permissions:', JSON.stringify(await evaluate('chrome.runti
 // --- extension pages run in a document, where dynamic import and the full UI are available ---
 const extId = new URL(sw.url).host;
 async function openPage(path) {
-  const t = await (await fetch(`http://127.0.0.1:${port}/json/new?chrome-extension://${extId}/${path}`, { method: "PUT" })).json();
+  const t = await (await fetch(`http://127.0.0.1:${port}/json/new?${path.includes("://") ? path : `chrome-extension://${extId}/${path}`}`, { method: "PUT" })).json();
   const sock = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((r) => sock.addEventListener("open", r));
   let n = 0; const wait = new Map();
@@ -110,6 +110,13 @@ async function openPage(path) {
 
 await sleep(3000); // the worker polls up to ~1.5 s for the popup before it falls back to the welcome tab
 console.log("pages the browser opened on install:", JSON.stringify((await targets()).filter((t) => /(popup|options).html$/.test(t.url)).map((t) => t.url.split("/").pop())));
+// What the browser itself says about the manifest (its own extensions page): install warnings
+const manager = await openPage("chrome://extensions");
+console.log("manifest warnings / errors:", await manager.evaluate(`chrome.developerPrivate.getExtensionsInfo({ includeDisabled: true, includeTerminated: true }).then((all) => {
+  const ours = all.find((e) => e.name === "Usage Tracker for Ollama Cloud");
+  return JSON.stringify({ found: Boolean(ours), manifestErrors: ours?.manifestErrors?.map((e) => e.message), installWarnings: ours?.installWarnings?.map((w) => w.message), runtimeErrors: ours?.runtimeErrors?.length });
+})`));
+manager.close();
 const options = await openPage("options.html");
 console.log("options page title:", await options.evaluate("document.title"), "| version shown:", await options.evaluate("document.getElementById('version').textContent"));
 console.log("seal round trip (real IndexedDB + WebCrypto):", await options.evaluate(`(async () => {

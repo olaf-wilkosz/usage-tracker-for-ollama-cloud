@@ -4,9 +4,9 @@
 //   node scripts/build.mjs chrome     -> only the Chrome / Edge / Brave package
 //   node scripts/build.mjs firefox    -> only the Firefox package
 //
-// Chrome gets extension/ as it is. Firefox gets the same files with a background "event
-// page" instead of a service worker plus its add-on id and data-collection declaration.
-// For development, Chrome can load extension/ directly; Firefox loads dist/firefox.
+// The source manifest carries both browsers' settings, so for development either browser can
+// load extension/ directly. The packages are the same files with the manifest trimmed to
+// what that browser understands (Chrome: service worker; Firefox: event page + add-on id).
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -17,29 +17,25 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SRC = join(ROOT, 'extension');
 const DIST = join(ROOT, 'dist');
 
-const GECKO_ID = 'usage-tracker-for-ollama-cloud@olaf-wilkosz.github.io';
-const FIREFOX_MIN_VERSION = '140.0'; // first release that understands data_collection_permissions
 
 const manifest = JSON.parse(readFileSync(join(SRC, 'manifest.json'), 'utf8'));
 const slug = 'usage-tracker-for-ollama-cloud';
 
-/** Per-browser manifest. */
+/**
+ * Per-browser manifest. The source manifest works in both families as it is (Chrome 121+ takes
+ * service_worker and ignores scripts, Firefox takes scripts and ignores service_worker, each
+ * ignores the other's settings), which is what lets either browser load extension/ directly.
+ * The packages drop what the other browser would only warn about.
+ */
 function manifestFor(target) {
-  if (target === 'chrome') return manifest;
+  if (target === 'chrome') {
+    const { browser_specific_settings: _gecko, ...rest } = manifest;
+    const { scripts: _scripts, ...background } = manifest.background;
+    return { ...rest, background };
+  }
 
   const { minimum_chrome_version: _chromeOnly, ...rest } = manifest;
-  return {
-    ...rest,
-    background: { scripts: [manifest.background.service_worker], type: 'module' },
-    browser_specific_settings: {
-      gecko: {
-        id: GECKO_ID,
-        strict_min_version: FIREFOX_MIN_VERSION,
-        // The API key is sent to ollama.com (the service the extension exists for), nowhere else
-        data_collection_permissions: { required: ['authenticationInfo'] }
-      }
-    }
-  };
+  return { ...rest, background: { scripts: manifest.background.scripts, type: 'module' } };
 }
 
 /** Commit and time of this build; "+local" marks uncommitted changes. */

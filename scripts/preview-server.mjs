@@ -90,6 +90,22 @@ function busyRaw(now) {
   return { balance, day, month };
 }
 
+/** Multiply every cost in a response (sample data only). */
+function scaleCost(raw, factor) {
+  const walk = (value) => {
+    if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === 'object') {
+      for (const [key, inner] of Object.entries(value)) {
+        if (key === 'usage_usd') value[key] = inner * factor;
+        else walk(inner);
+      }
+    }
+  };
+  walk(raw.day);
+  walk(raw.month);
+  return raw;
+}
+
 /** What the extension would have stored for a scenario: usage data + activity. */
 function scenario(name, now = Date.now()) {
   const lastFetch = new Date(now - 2 * 60e3).toISOString();
@@ -116,8 +132,9 @@ function scenario(name, now = Date.now()) {
       return finish(raw);
     }
     case 'payg': {
-      const raw = busyRaw(now);
-      raw.balance = { included: { balance_usd: 0, allowance_usd: 0, period: { from: '', until: '' } }, purchased: { balance_usd: 12.5 } };
+      // made-up numbers: roughly $1.30 a day, $18.40 of credits left -> about two weeks
+      const raw = scaleCost(busyRaw(now), 3.4);
+      raw.balance = { included: { balance_usd: 0, allowance_usd: 0, period: { from: '', until: '' } }, purchased: { balance_usd: 18.4 } };
       return finish(raw);
     }
     case 'offline': {
@@ -135,6 +152,7 @@ function stub({ data, activity, hasKey, pinned }) {
 (() => {
   const data = ${JSON.stringify(data)};
   const activity = ${JSON.stringify(activity)};
+  let connected = ${hasKey};
   const settings = { refreshIntervalMinutes: 5, notifyWarning: 80, notifyCritical: 95, notifyEnabled: true, showPeakBanner: true };
   window.chrome = {
     runtime: {
@@ -142,8 +160,11 @@ function stub({ data, activity, hasKey, pinned }) {
       getManifest: () => ({ version: '1.2.0' }),
       openOptionsPage: () => console.log('openOptionsPage'),
       sendMessage(msg, cb) {
+        // stateful enough to click through the setup: saving a key connects, removing it disconnects
+        if (msg.type === 'SAVE_API_KEY' && msg.key !== 'bad') connected = true;
+        if (msg.type === 'REMOVE_API_KEY') connected = false;
         const replies = {
-          GET_USAGE_DATA: { data }, GET_SETTINGS: { settings }, GET_KEY_STATE: { hasKey: ${hasKey} },
+          GET_USAGE_DATA: { data }, GET_SETTINGS: { settings }, GET_KEY_STATE: { hasKey: connected, status: connected ? 'ok' : 'no_key' },
           SAVE_API_KEY: msg.key === 'bad' ? { success: false, error: 'Ollama rejected this key. Check that you copied all of it.' } : { success: true }
         };
         setTimeout(() => cb && cb(replies[msg.type] || { success: true }), 0);

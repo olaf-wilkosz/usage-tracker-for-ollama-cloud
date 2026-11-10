@@ -38,7 +38,7 @@ Saving or removing the key bumps an epoch counter; a refresh that was reading wi
 
 ### Pay as you go
 
-Ollama dropped the Free plan with included usage in November 2026: an account without a plan has `included.allowance_usd = 0` (or no `included` block), so there is no meter and the purchased credits are the only number. For such accounts the toolbar shows the balance as the badge ("$12", red at $0, orange at or below the alert level), the popup says how long it lasts at the recent pace (last 7 UTC days plus today so far) and `checkCreditNotifications` alerts once when the balance drops to the "low" level or runs out (never at the first reading, never again until the balance has been above the level). With included credits (Pro, Max, Team) none of this applies: the pace says nothing about the purchased part, which is used second.
+Ollama dropped the Free plan with included usage in November 2026: an account without a plan has `included.allowance_usd = 0` (or no `included` block), so there is no meter and the purchased credits are the only number. For such accounts the toolbar shows the balance as the badge ("$18"), the popup says how long it lasts at the recent pace (last 7 UTC days plus today so far) and `trackCredits` / `notifyCredits` alert once when it gets worse. "Low" is relative to the pace, not a dollar amount, because a fixed dollar level means something different on a $10 top-up than on $300: low = the credits last `lowCreditsDays` (default 3, 0 = off) or less; "empty" = nothing left. The badge is orange when low, green otherwise, red when empty after there had been credits (`hadCredits`), and neutral gray for an account that never had any, because that is a state rather than an alarm. Nothing is announced at the first reading, and a level that was already reported is not repeated until the balance has been better again. With included credits (Pro, Max, Team) none of this applies: the pace says nothing about the purchased part, which is used second.
 
 ### Activity
 
@@ -73,6 +73,8 @@ Early versions read `ollama.com/settings` with the user's session cookies and pa
 Trade-offs accepted: the user must create an API key; per-request detail (the old "Recent requests" table) is gone in favour of hourly buckets; model colors are no longer read from the page (a small table of observed colors plus a hash fallback, decorative only).
 
 ## One codebase, two browsers
+
+The source manifest works in both families as it is: Chrome 121+ takes `background.service_worker` and ignores `scripts`, Firefox takes `scripts` (event page) and ignores `service_worker`, and each ignores the other's settings (`browser_specific_settings`). Brave and Edge report no manifest warnings (`npm run smoke` asks the browser). So `extension/` loads unpacked in Chrome, Edge, Brave and Firefox / Zen (`about:debugging` → Load Temporary Add-on → `extension/manifest.json`) with no build step.
 
 `extension/` is the source for Chrome, Edge, Brave and Firefox. `scripts/build.mjs` writes two thin manifests: Chrome keeps `background.service_worker`; Firefox gets `background.scripts` (event page, ES module), a gecko add-on id and `data_collection_permissions`. The code feature-detects the few differences (`notifications.getPermissionLevel` does not exist on Firefox).
 

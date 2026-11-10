@@ -53,7 +53,7 @@
 
       <section class="settings-section only-when-connected">
         <h2>Notification Thresholds</h2>
-        <p class="setting-description">Show a system notification when usage exceeds these percentages. On pay as you go (no included usage) the alert is about your credits instead: it fires when the balance falls to the dollar amount below (0 turns it off) and when it runs out.</p>
+        <p class="setting-description">Show a system notification when usage exceeds these percentages. On pay as you go (no included usage) the alert is about your credits instead: it fires when your credits will last the number of days below or less at your recent pace (0 turns it off), and when they run out.</p>
 
         <div class="setting-row">
           <label for="notifyWarning">Warning threshold (%)</label>
@@ -81,11 +81,11 @@
 
         <div class="setting-row">
 
-          <label for="lowCreditsUsd">Low credits alert ($)</label>
+          <label for="lowCreditsDays">Low credits alert (days left)</label>
 
-          <input type="number" id="lowCreditsUsd" min="0" step="1" value="5"
+          <input type="number" id="lowCreditsDays" min="0" step="1" value="3"
 
-                 aria-label="Low credits alert in dollars for pay as you go, 0 turns it off">
+                 aria-label="Low credits alert for pay as you go: days of credits left, 0 turns it off">
 
         </div>
 

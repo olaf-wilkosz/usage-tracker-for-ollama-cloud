@@ -917,3 +917,15 @@ footer {
   white-space: nowrap;
   border: 0;
 }
+
+/* Number fields without the browsers' spin buttons (Firefox draws very heavy ones) */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

@@ -166,10 +166,22 @@ test('buildUsage: pay as you go shows how long the credits last at the recent pa
 
 test('usage helpers: toolbar badge text and colors for a credits balance', () => {
   assert.deepEqual([0, -1, 0.04, 5.43, 9.99, 10, 125.9, 999.9, 1500, 250000].map(U.formatBadgeAmount), ['$0', '$0', '$0.0', '$5.4', '$9.9', '$10', '$125', '$999', '$1k', '$99k']);
-  assert.deepEqual(U.getCreditsBadgeStyle(0, 5), { color: '#c62828', textColor: '#ffffff' });
-  assert.deepEqual(U.getCreditsBadgeStyle(5, 5), { color: '#f57c00', textColor: '#1a1a1a' }, 'at the level counts as low');
-  assert.deepEqual(U.getCreditsBadgeStyle(5.01, 5), { color: '#2e7d32', textColor: '#ffffff' });
-  assert.deepEqual(U.getCreditsBadgeStyle(1, 0), { color: '#2e7d32', textColor: '#ffffff' }, 'alert off: never orange');
+  const RED = { color: '#c62828', textColor: '#ffffff' };
+  const GRAY = { color: '#5f6368', textColor: '#ffffff' };
+  const ORANGE = { color: '#f57c00', textColor: '#1a1a1a' };
+  const GREEN = { color: '#2e7d32', textColor: '#ffffff' };
+  assert.deepEqual(U.getCreditsBadgeStyle({ amount: 0, lowDays: 3, hadCredits: true }), RED, 'ran out');
+  assert.deepEqual(U.getCreditsBadgeStyle({ amount: 0, lowDays: 3, hadCredits: false }), GRAY, 'never had any: a state, not an alarm');
+  assert.deepEqual(U.getCreditsBadgeStyle({ amount: 5, runwayDays: 3, lowDays: 3, hadCredits: true }), ORANGE, 'at the level counts as low');
+  assert.deepEqual(U.getCreditsBadgeStyle({ amount: 5, runwayDays: 3.01, lowDays: 3, hadCredits: true }), GREEN);
+  assert.deepEqual(U.getCreditsBadgeStyle({ amount: 5, lowDays: 3, hadCredits: true }), GREEN, 'no recent spending: nothing to run out of');
+  assert.deepEqual(U.getCreditsBadgeStyle({ amount: 1, runwayDays: 0.5, lowDays: 0, hadCredits: true }), GREEN, 'alert off: never orange');
+  assert.equal(U.formatRunway(0.4), 'less than a day');
+  assert.equal(U.formatRunway(1.5), '1 day');
+  assert.equal(U.formatRunway(12.4), '12 days');
+  assert.equal(U.formatRunway(89.6), '90 days');
+  assert.equal(U.formatRunway(90), '90+ days');
+  assert.equal(U.formatRunway(5000), '90+ days');
 });
 
 test('buildUsage: unexpected shapes are schema errors, not crashes', () => {

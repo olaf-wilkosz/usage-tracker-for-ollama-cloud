@@ -5,7 +5,7 @@ import * as S from '../extension/settings.js';
 
 test('migrateSettings: v1.0 keys carried over, old keys removed, new defaults added', () => {
   const m = S.migrateSettings({ refreshIntervalMinutes: 15, notifyThresholdSession: 70, notifyThresholdWeekly: 90, notifyEnabled: false });
-  assert.deepEqual(m, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: false, showPeakBanner: true, lowCreditsUsd: 5 });
+  assert.deepEqual(m, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: false, showPeakBanner: true, lowCreditsDays: 3 });
   assert.deepEqual(S.migrateSettings(undefined), S.DEFAULT_SETTINGS);
   assert.equal(S.migrateSettings({ notifyWarning: 50, notifyThresholdSession: 70 }).notifyWarning, 50, 'new key wins');
 });
@@ -33,11 +33,12 @@ test('isPinnedToToolbar: true / false when the browser says, null when it cannot
   delete globalThis.chrome;
 });
 
-test('validateSettings: the low credits alert is 0 (off) or more dollars', () => {
-  assert.deepEqual(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: 0 }), []);
-  assert.deepEqual(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: 12.5 }), []);
-  assert.ok(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: -1 }).length);
-  assert.ok(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsUsd: NaN }).length);
+test('validateSettings: the low credits alert is 0 (off) or a number of days', () => {
+  assert.deepEqual(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsDays: 0 }), []);
+  assert.deepEqual(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsDays: 2.5 }), []);
+  assert.ok(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsDays: -1 }).length);
+  assert.ok(S.validateSettings({ ...S.DEFAULT_SETTINGS, lowCreditsDays: NaN }).length);
+  assert.ok(!('lowCreditsUsd' in S.migrateSettings({ lowCreditsUsd: 5 })), 'the dollar draft of the setting is dropped');
 });
 
 test('describeBuild: an unpacked source folder says when it was loaded', async () => {

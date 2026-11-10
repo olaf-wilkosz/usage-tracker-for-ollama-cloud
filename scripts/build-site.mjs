@@ -13,10 +13,11 @@ const OUT = join(ROOT, 'dist', 'site');
 
 const IMAGES = [
   ['store/promo/popup.png', 'img/popup.png'],
-  ['store/screenshots/02-alerts.png', 'img/02-alerts.png'],
-  ['store/screenshots/03-models.png', 'img/03-models.png'],
-  ['store/screenshots/04-activity.png', 'img/04-activity.png'],
-  ['store/screenshots/05-private.png', 'img/05-private.png'],
+  ['store/screenshots/02-payg.png', 'img/02-payg.png'],
+  ['store/screenshots/03-alerts.png', 'img/03-alerts.png'],
+  ['store/screenshots/04-models.png', 'img/04-models.png'],
+  ['store/screenshots/05-activity.png', 'img/05-activity.png'],
+  ['store/screenshots/06-private.png', 'img/06-private.png'],
   ['store/promo/og-1200x630.png', 'img/og.png'],
   ['extension/icons/icon128.png', 'img/icon128.png']
 ];

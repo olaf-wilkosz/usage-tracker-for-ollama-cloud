@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS = {
   notifyCritical: 95,
   notifyEnabled: true,
   showPeakBanner: true,
-  lowCreditsUsd: 5 // pay as you go: alert when purchased credits fall to this many dollars (0 = off)
+  lowCreditsDays: 3 // pay as you go: alert when the credits last this many days or less at the recent pace (0 = off)
 };
 
 /**
@@ -31,6 +31,7 @@ export function migrateSettings(stored) {
   if (raw.notifyCritical === undefined && typeof raw.notifyThresholdWeekly === 'number') {
     migrated.notifyCritical = raw.notifyThresholdWeekly;
   }
+  delete migrated.lowCreditsUsd; // an earlier draft of the low-credits setting (dollars)
   delete migrated.notifyThresholdSession;
   delete migrated.notifyThresholdWeekly;
   return migrated;
@@ -238,8 +239,8 @@ export function validateSettings(settings) {
   if (!(settings.notifyCritical >= 1 && settings.notifyCritical <= 100)) {
     errors.push('Critical threshold must be between 1 and 100');
   }
-  if (!(settings.lowCreditsUsd >= 0)) {
-    errors.push('Low credits alert must be 0 (off) or more dollars');
+  if (!(settings.lowCreditsDays >= 0)) {
+    errors.push('Low credits alert must be 0 (off) or a number of days');
   }
   if (errors.length === 0 && settings.notifyWarning > settings.notifyCritical) {
     errors.push('Warning threshold must not exceed critical');

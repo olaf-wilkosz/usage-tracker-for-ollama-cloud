@@ -198,6 +198,12 @@ await test('the 30-day series is reused for 10 minutes, then fetched again', asy
   assert.ok(calls.slice(stale).some((c) => c.url.includes('range=30d')), 'refetched once the copy is older than 10 minutes');
 });
 
+await test('reinstalling with a working key does not open the welcome tab', async () => {
+  const before = openedOptions;
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, before, 'nothing to set up');
+});
+
 await test('activity: hourly requests from the 24h reading, daily totals from the 30d reading', async () => {
   const { hours, days } = store.ollamaActivity;
   assert.equal(Object.values(hours).reduce((a, b) => a + b, 0), 22);
@@ -254,47 +260,69 @@ await test('pay-as-you-go account (no included credits): default icon + credits 
   assert.ok(store.ollamaUsageData.credits.runwayDays > 90, 'a tiny recent spend means a very long runway');
 });
 
-await test('pay as you go: low credits and empty credits notify once when the balance drops, never at the first reading', async () => {
+await test('pay as you go: credits alerts follow the pace, once per step, never at the first reading', async () => {
   const payg = (amount) => ({ included: { balance_usd: 0, allowance_usd: 0, period: { from: 'a', until: 'b' } }, purchased: { balance_usd: amount } });
+  // The last 8 daily buckets add up to perDay * 8 (today counts as a whole day, long after 2026-11-08)
+  const pace = (perDay) => {
+    const month = JSON.parse(JSON.stringify(FREE.month));
+    month.buckets.forEach((bucket) => { bucket.usage_usd = 0; });
+    month.buckets.at(-1).usage_usd = perDay * 8;
+    return month;
+  };
+  const set = (amount, perDay) => {
+    world = { ...FREE, balance: payg(amount), month: pace(perDay) };
+    delete store.ollamaMonthCache; // the 30-day series is cached for 10 minutes; each step here has a new pace
+  };
   const credit = () => notes.filter((n) => n.id === 'ollama-usage-credits');
   const startNotes = credit().length;
   delete store.ollamaCreditsState; // as after a fresh start
+  delete store.ollamaMonthCache;
 
-  world = { ...FREE, balance: payg(0) }; // an account that begins at $0 is not news
+  set(0, 0); // an account that has never had credits: not news, and not an alarm either
   await refresh();
   assert.equal(credit().length, startNotes);
-  assert.deepEqual(badge, { text: '$0', color: '#c62828', textColor: '#ffffff' });
+  assert.deepEqual(badge, { text: '$0', color: '#5f6368', textColor: '#ffffff' });
 
-  world = { ...FREE, balance: payg(20) };
+  set(5, 0); // credits but no spending: nothing to run out of
   await refresh();
-  assert.equal(credit().length, startNotes, 'plenty of credits: quiet');
+  assert.equal(credit().length, startNotes);
+  assert.equal(store.ollamaUsageData.credits.runwayDays, undefined);
+  assert.deepEqual(badge, { text: '$5.0', color: '#2e7d32', textColor: '#ffffff' });
 
-  world = { ...FREE, balance: payg(4.2) }; // default alert level is $5
+  set(20, 1); // 20 days at $1/day
+  await refresh();
+  assert.equal(credit().length, startNotes, 'plenty: quiet');
+  assert.deepEqual(badge, { text: '$20', color: '#2e7d32', textColor: '#ffffff' });
+
+  set(2.5, 1); // 2.5 days: at or below the default 3
   await refresh();
   assert.equal(credit().length, startNotes + 1);
-  assert.match(credit().at(-1).opts.message, /\$4\.20 of credits left \(alert at \$5\.00\)/);
-  assert.deepEqual(badge, { text: '$4.2', color: '#f57c00', textColor: '#1a1a1a' });
+  assert.match(credit().at(-1).opts.message, /\$2\.50 left: about 3 days at \$1\.00\/day/);
+  assert.deepEqual(badge, { text: '$2.5', color: '#f57c00', textColor: '#1a1a1a' });
   await refresh();
   assert.equal(credit().length, startNotes + 1, 'not repeated');
 
-  world = { ...FREE, balance: payg(0) };
+  set(0, 1); // and then it is gone: red, because there were credits before
   await refresh();
   assert.equal(credit().length, startNotes + 2, 'running out is worse than running low');
   assert.match(credit().at(-1).opts.message, /used up/);
+  assert.deepEqual(badge, { text: '$0', color: '#c62828', textColor: '#ffffff' });
 
-  world = { ...FREE, balance: payg(30) }; // topped up
+  set(30, 1); // topped up
   await refresh();
-  world = { ...FREE, balance: payg(3) };
+  set(2, 1);
   await refresh();
   assert.equal(credit().length, startNotes + 3, 'a new drop after a top-up notifies again');
 
-  store.settings = { ...store.settings, lowCreditsUsd: 0 }; // alert off: only "empty" remains
-  world = { ...FREE, balance: payg(40) };
+  store.settings = { ...store.settings, lowCreditsDays: 0 }; // low-credits alert off: only running out remains
+  set(40, 1);
   await refresh();
-  world = { ...FREE, balance: payg(1) };
+  set(1, 1);
   await refresh();
-  assert.equal(credit().length, startNotes + 3, 'level 0 = no low-credits alert');
-  store.settings = { ...store.settings, lowCreditsUsd: 5 };
+  assert.equal(credit().length, startNotes + 3);
+  assert.equal(badge.color, '#2e7d32', 'no orange with the alert off');
+  store.settings = { ...store.settings, lowCreditsDays: 3 };
+  delete store.ollamaMonthCache;
 });
 
 await test('an account with included credits never gets credits alerts or a dollar badge', async () => {
@@ -400,7 +428,7 @@ await test('settings: v1.0 stored keys migrate through GET_SETTINGS and onInstal
   store.settings = { refreshIntervalMinutes: 15, notifyThresholdSession: 70, notifyThresholdWeekly: 90, notifyEnabled: true };
   assert.equal((await send({ type: 'GET_SETTINGS' })).settings.notifyWarning, 70);
   await handlers.installed({ reason: 'update' });
-  assert.deepEqual(store.settings, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: true, showPeakBanner: true, lowCreditsUsd: 5 });
+  assert.deepEqual(store.settings, { refreshIntervalMinutes: 15, notifyWarning: 70, notifyCritical: 90, notifyEnabled: true, showPeakBanner: true, lowCreditsDays: 3 });
 });
 
 await test('test notification: sent when granted, reported (not sent) when the browser blocks it', async () => {

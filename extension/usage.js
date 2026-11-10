@@ -104,14 +104,23 @@ export function formatBadgeAmount(amount) {
 }
 
 /**
- * Badge colors for a credits balance: red when empty, orange at or below the alert level.
- * @param {number} amount
- * @param {number} lowUsd - the "low credits" alert level; 0 = off
+ * Badge colors for a credits balance. Green while the credits last; orange when they will
+ * last `lowDays` or less at the recent pace; red when they ran out after having been there;
+ * neutral gray for an account that never had any (that is a state, not an alarm).
+ * @param {{amount: number, runwayDays?: number|null, lowDays: number, hadCredits: boolean}} state
  */
-export function getCreditsBadgeStyle(amount, lowUsd) {
-  if (!(amount > 0)) return { color: '#c62828', textColor: '#ffffff' };
-  if (lowUsd > 0 && amount <= lowUsd) return { color: '#f57c00', textColor: '#1a1a1a' };
+export function getCreditsBadgeStyle({ amount, runwayDays = null, lowDays, hadCredits }) {
+  if (!(amount > 0)) return hadCredits ? { color: '#c62828', textColor: '#ffffff' } : { color: '#5f6368', textColor: '#ffffff' };
+  if (lowDays > 0 && runwayDays !== null && runwayDays <= lowDays) return { color: '#f57c00', textColor: '#1a1a1a' };
   return { color: '#2e7d32', textColor: '#ffffff' };
+}
+
+/** "less than a day", "1 day", "12 days", "90+ days" for a number of days of credits left. */
+export function formatRunway(days) {
+  if (days < 1) return 'less than a day';
+  if (days < 2) return '1 day';
+  if (days >= 90) return '90+ days';
+  return `${Math.round(days)} days`;
 }
 
 /**

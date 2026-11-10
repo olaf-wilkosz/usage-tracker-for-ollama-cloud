@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pay as you go</title>
+  <link rel="stylesheet" href="slides.css">
+  <style>
+    .badges { display: flex; gap: 22px; margin-top: 34px; }
+    .bd { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 16px; color: var(--text-2); }
+    .bd-icon { position: relative; width: 64px; height: 64px; }
+    .bd-icon img { width: 64px; height: 64px; display: block; }
+    .badge {
+      position: absolute; right: -10px; bottom: -4px; min-width: 40px; height: 26px; padding: 0 7px;
+      border-radius: 13px; font-size: 16px; font-weight: 700; line-height: 26px; text-align: center;
+      border: 2px solid #1a1b1e;
+    }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <div class="copy">
+      <div class="brand"><img src="/ext/icons/icon128.png" alt="">Usage Tracker for Ollama Cloud</div>
+      <h1>Pay as you go? See how long your <em>credits last.</em></h1>
+      <p class="lead">Your balance on the toolbar badge, an estimate of the days it lasts at your recent pace, and an alert before it runs out.</p>
+      <div class="badges" role="img" aria-label="Toolbar badge: $18 in green, $3.6 in orange, $0 in red">
+        <div class="bd"><div class="bd-icon"><img src="/ext/icons/icon128.png" alt=""><span class="badge" style="background:#2e7d32;color:#fff">$18</span></div>plenty left</div>
+        <div class="bd"><div class="bd-icon"><img src="/ext/icons/icon128.png" alt=""><span class="badge" style="background:#f57c00;color:#1a1a1a">$3.6</span></div>running low</div>
+        <div class="bd"><div class="bd-icon"><img src="/ext/icons/icon128.png" alt=""><span class="badge" style="background:#c62828;color:#fff">$0</span></div>used up</div>
+      </div>
+    </div>
+    <div class="device"><iframe src="/popup?scenario=payg&pinned=1" title="Extension popup with sample data"></iframe></div>
+    <div class="footnote">Unofficial &middot; not affiliated with Ollama</div>
+    <div class="device-note">Sample data</div>
+  </div>
+</body>
+</html>

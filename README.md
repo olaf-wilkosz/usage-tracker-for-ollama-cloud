@@ -44,7 +44,7 @@ The Chrome Web Store and Firefox Add-ons listings are on the way. Until then:
 
 That is the whole setup.
 
-**Firefox / Zen:** run `npm run build`, open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `dist/firefox/manifest.json` (until the AMO listing is live). If requests fail, check that the extension is allowed to access `ollama.com` under `about:addons` > the extension > Permissions.
+**Firefox / Zen:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `extension/manifest.json` (the same folder, no build needed; Firefox 140+). A temporary add-on is gone after the browser restarts until the AMO listing is live. If requests fail, check that the extension is allowed to access `ollama.com` under `about:addons` > the extension > Permissions.
 
 ## How it works
 

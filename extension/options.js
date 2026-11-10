@@ -26,7 +26,7 @@ const elements = {
   refreshInterval: document.getElementById('refreshInterval'),
   notifyWarning: document.getElementById('notifyWarning'),
   notifyCritical: document.getElementById('notifyCritical'),
-  lowCreditsUsd: document.getElementById('lowCreditsUsd'),
+  lowCreditsDays: document.getElementById('lowCreditsDays'),
   buildInfo: document.getElementById('buildInfo'),
   notifyEnabled: document.getElementById('notifyEnabled'),
   showPeakBanner: document.getElementById('showPeakBanner'),
@@ -46,7 +46,7 @@ function populateForm(settings) {
   elements.refreshInterval.value = String(settings.refreshIntervalMinutes);
   elements.notifyWarning.value = String(settings.notifyWarning);
   elements.notifyCritical.value = String(settings.notifyCritical);
-  elements.lowCreditsUsd.value = String(settings.lowCreditsUsd);
+  elements.lowCreditsDays.value = String(settings.lowCreditsDays);
   elements.notifyEnabled.checked = settings.notifyEnabled;
   elements.showPeakBanner.checked = settings.showPeakBanner;
 }
@@ -59,7 +59,7 @@ function collectSettings() {
     refreshIntervalMinutes: parseInt(elements.refreshInterval.value, 10),
     notifyWarning: parseInt(elements.notifyWarning.value, 10),
     notifyCritical: parseInt(elements.notifyCritical.value, 10),
-    lowCreditsUsd: parseFloat(elements.lowCreditsUsd.value),
+    lowCreditsDays: parseFloat(elements.lowCreditsDays.value),
     notifyEnabled: elements.notifyEnabled.checked,
     showPeakBanner: elements.showPeakBanner.checked
   };

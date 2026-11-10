@@ -5,7 +5,9 @@
  * sends notifications.
  */
 
-import { getBadgeColor, getBadgeStyle, getCreditsBadgeStyle, formatBadgeAmount, formatUsd, emptyUsage } from './usage.js';
+import {
+  getBadgeColor, getBadgeStyle, getCreditsBadgeStyle, formatBadgeAmount, formatRunway, formatUsd, emptyUsage
+} from './usage.js';
 import { apiGet, fetchApiData, buildUsage, extractActivity, statusForError } from './ollama-api.js';
 import { sealSecret, openSecret, destroySealingKey } from './secret-store.js';
 import { DEFAULT_SETTINGS, migrateSettings } from './settings.js';
@@ -17,7 +19,7 @@ const ACTIVITY_KEY = 'ollamaActivity'; // hourly + daily request counts for the 
 const NOTIFIED_KEY = 'ollamaNotified'; // per-meter notification state (no repeat alerts)
 const ERROR_COUNT_KEY = 'ollamaErrorCount'; // persisted: the service worker is restarted between alarms
 const API_KEY_KEY = 'ollamaApiKey'; // the API key, sealed (see secret-store.js)
-const CREDITS_STATE_KEY = 'ollamaCreditsState'; // last credits alert level, so only a drop notifies
+const CREDITS_STATE_KEY = 'ollamaCreditsState'; // { level, hadCredits }: only a drop notifies; "ran out" needs "had some"
 const MONTH_CACHE_KEY = 'ollamaMonthCache'; // last 30-day response, reused for MONTH_CACHE_MS
 const BACKOFF_KEY = 'ollamaBackoffUntil'; // epoch ms: after a 429 no request is made before this
 const ALARM_NAME = 'ollamaUsageRefresh';
@@ -162,7 +164,7 @@ function drawUsageIcon(size, meters) {
 /**
  * Update the toolbar icon and tooltip based on usage data
  */
-async function updateBadge(data, settings = DEFAULT_SETTINGS) {
+async function updateBadge(data, settings = DEFAULT_SETTINGS, creditsInfo = null) {
   if (NEEDS_KEY_STATUSES.has(data.status)) {
     // Nudge towards setup: "!" badge and a tooltip that says what to do
     await chrome.action.setIcon({ path: DEFAULT_ICON_PATHS });
@@ -182,8 +184,13 @@ async function updateBadge(data, settings = DEFAULT_SETTINGS) {
     // No percentage to draw: no data yet, a persistent error, or an account without included
     // usage (pay as you go), where the credits balance is the number that matters
     await chrome.action.setIcon({ path: DEFAULT_ICON_PATHS });
-    if (data.credits && (data.meters || []).length === 0) {
-      const style = getCreditsBadgeStyle(data.credits.amount, settings.lowCreditsUsd);
+    if (creditsInfo) {
+      const style = getCreditsBadgeStyle({
+        amount: data.credits.amount,
+        runwayDays: data.credits.runwayDays ?? null,
+        lowDays: settings.lowCreditsDays,
+        hadCredits: creditsInfo.hadCredits
+      });
       await chrome.action.setBadgeBackgroundColor({ color: style.color });
       await chrome.action.setBadgeTextColor({ color: style.textColor });
       await chrome.action.setBadgeText({ text: formatBadgeAmount(data.credits.amount) });
@@ -257,31 +264,42 @@ async function checkThresholdNotifications(data, settings) {
 }
 
 /**
- * Pay as you go: alert when the purchased credits drop to the "low" level or run out. The
- * first reading only records the state (an account that starts at $0 is not news), and a
- * level that was already reported is not repeated until the balance has been above it again.
+ * Pay as you go: where the purchased credits stand. "low" = they last the configured number of
+ * days or less at the recent pace, "empty" = nothing left. Only fresh readings are recorded.
+ * @returns {Promise<{level: string|null, hadCredits: boolean, previous: Object|null}|null>}
+ *   null for accounts with included usage (no credits alerts there) or no credits information
  */
+async function trackCredits(data, settings) {
+  if (!data.credits || (data.meters || []).length > 0) return null;
+  const stored = (await chrome.storage.local.get(CREDITS_STATE_KEY))[CREDITS_STATE_KEY];
+  const { amount, runwayDays } = data.credits;
+  const low = settings.lowCreditsDays;
+  const level = amount <= 0 ? 'empty' : low > 0 && runwayDays !== undefined && runwayDays <= low ? 'low' : null;
+  const state = { level, hadCredits: Boolean(stored?.hadCredits) || amount > 0 };
+  if (data.status === 'ok') await chrome.storage.local.set({ [CREDITS_STATE_KEY]: state });
+  return { ...state, previous: stored ?? null };
+}
+
 const CREDIT_LEVEL_RANK = { low: 1, empty: 2 };
 
-async function checkCreditNotifications(data, settings) {
-  if (!data.credits || (data.meters || []).length > 0) return;
-  const stored = (await chrome.storage.local.get(CREDITS_STATE_KEY))[CREDITS_STATE_KEY];
-  const { amount, text } = data.credits;
-  const low = settings.lowCreditsUsd;
-  const level = amount <= 0 ? 'empty' : low > 0 && amount <= low ? 'low' : null;
-  await chrome.storage.local.set({ [CREDITS_STATE_KEY]: { level } });
+/**
+ * Notify when the credits get worse (ok -> low -> empty), once per step. The first reading only
+ * records the state, so an account that starts at $0 is not news, and a level that was already
+ * reported is not repeated until the balance has been better again.
+ */
+async function notifyCredits(data, settings, info) {
+  if (!info || !info.level || !info.previous || !settings.notifyEnabled) return;
+  if (CREDIT_LEVEL_RANK[info.level] <= (CREDIT_LEVEL_RANK[info.previous.level] ?? 0)) return;
 
-  if (!stored || !level || !settings.notifyEnabled) return;
-  if (CREDIT_LEVEL_RANK[level] <= (CREDIT_LEVEL_RANK[stored.level] ?? 0)) return;
-
+  const { text, runwayDays, perDay } = data.credits;
   await showNotification('ollama-usage-credits', {
     type: 'basic',
     iconUrl: 'icons/icon48.png',
-    title: level === 'empty' ? 'Ollama credits used up' : 'Ollama credits running low',
-    message: level === 'empty'
+    title: info.level === 'empty' ? 'Ollama credits used up' : 'Ollama credits running low',
+    message: info.level === 'empty'
       ? 'Your purchased credits are used up. Add credits to keep using cloud models.'
-      : `${text} of credits left (alert at ${formatUsd(low)}).`,
-    priority: level === 'empty' ? 2 : 1
+      : `${text} left: about ${formatRunway(runwayDays)} at ${formatUsd(perDay)}/day.`,
+    priority: info.level === 'empty' ? 2 : 1
   });
 }
 
@@ -394,13 +412,14 @@ async function doRefresh() {
   await chrome.storage.local.set(toStore);
 
   const settings = await getSettings();
-  await updateBadge(data, settings);
+  const creditsInfo = await trackCredits(data, settings);
+  await updateBadge(data, settings, creditsInfo);
 
   if (data.status === 'ok') {
     const stored = (await chrome.storage.local.get(ACTIVITY_KEY))[ACTIVITY_KEY];
     await chrome.storage.local.set({ [ACTIVITY_KEY]: mergeActivity(stored, extractActivity(raw)) });
     await checkThresholdNotifications(data, settings);
-    await checkCreditNotifications(data, settings);
+    await notifyCredits(data, settings, creditsInfo);
   }
   await checkPersistentErrors(data, settings);
 
@@ -569,11 +588,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Do initial fetch (shows the "!" setup badge until an API key is saved)
   await refreshUsage();
 
-  // First run: a welcome tab with the connect step. (action.openPopup() was tried instead and
-  // dropped: opened without a click it can appear in a window that is not focused, never gets
-  // the blur that dismisses a popup, and stays on screen.)
+  // First run: a welcome tab with the connect step, unless a working key is already stored
+  // (a reinstall keeps the extension's data, and there is nothing to set up then).
+  // action.openPopup() was tried instead and dropped: opened without a click it can appear in a
+  // window that is not focused, never gets the blur that dismisses a popup, and stays on screen.
   if (details.reason === 'install') {
-    chrome.runtime.openOptionsPage();
+    const { [STORAGE_KEY]: usage } = await chrome.storage.local.get(STORAGE_KEY);
+    if (!usage || NEEDS_KEY_STATUSES.has(usage.status)) chrome.runtime.openOptionsPage();
   }
 });
 

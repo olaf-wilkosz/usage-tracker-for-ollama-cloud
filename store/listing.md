@@ -82,7 +82,7 @@ No remote code is used: every script is bundled in the package, and no `eval`, r
 | Asset | File | Size |
 | --- | --- | --- |
 | Icon | `extension/icons/icon128.png` | 128x128 |
-| Screenshots | `store/screenshots/01-overview.png` ... `05-private.png` | 1280x800 |
+| Screenshots | `store/screenshots/01-overview.png` ... `06-private.png` (six; the Chrome Web Store takes five: upload 01, 02, 03, 04 and 06) | 1280x800 |
 | Small promo tile | `store/promo/small-440x280.png` | 440x280 |
 | Marquee promo tile | `store/promo/marquee-1400x560.png` | 1400x560 |
 
