@@ -188,7 +188,9 @@ h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.
   cursor: zoom-in;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.zoom:hover { border-color: #55565c; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
+button.zoom:hover { border-color: #55565c; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
+/* On a phone the screenshots are not enlargeable (carousel.js swaps the button for this plain frame) */
+.zoom-static { cursor: default; }
 .zoom img { display: block; width: 100%; height: auto; }
 
 .car-btn {
@@ -232,6 +234,11 @@ h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.
 .car-side { position: absolute; top: 50%; z-index: 1; margin-top: -24px; background: rgba(20, 21, 24, 0.78); }
 .car-prev { left: 8px; }
 .car-next { right: 8px; }
+
+/* Small touch screens: swiping and the dots do the job, the arrows would only cover the picture */
+@media (hover: none) and (pointer: coarse) and (max-width: 899px) {
+  .car-side { display: none; }
+}
 
 @media (min-width: 1200px) {
   .car-side { background: var(--card); }

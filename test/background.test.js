@@ -147,6 +147,16 @@ await test('first install: the toolbar popup when a window has focus, else the w
   delete chrome.action.openPopup; // an older browser without the API
   await handlers.installed({ reason: 'install' });
   assert.equal(openedOptions, 3);
+
+  // Firefox (getBrowserInfo exists only there): never tries the popup, always the welcome tab
+  let firefoxPopups = 0;
+  chrome.action.openPopup = async () => { firefoxPopups++; };
+  chrome.windows = { getLastFocused: async () => ({ id: 7, focused: true }) };
+  chrome.runtime.getBrowserInfo = async () => ({ name: 'Firefox' });
+  await handlers.installed({ reason: 'install' });
+  assert.equal(firefoxPopups, 0);
+  assert.equal(openedOptions, 4);
+  delete chrome.runtime.getBrowserInfo;
   delete chrome.windows;
 });
 

@@ -578,7 +578,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  */
 async function showSetup() {
   try {
-    if (chrome.action.openPopup) {
+    // getBrowserInfo exists only in Firefox, where the popup cannot be opened without a click (and
+    // may resolve without showing anything, leaving no setup at all): go straight to the welcome tab
+    const isFirefox = typeof chrome.runtime.getBrowserInfo === 'function';
+    if (chrome.action.openPopup && !isFirefox) {
       const focused = await chrome.windows.getLastFocused();
       if (focused?.focused) {
         await chrome.action.openPopup({ windowId: focused.id });

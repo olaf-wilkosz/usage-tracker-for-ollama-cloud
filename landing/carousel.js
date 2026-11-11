@@ -86,6 +86,24 @@
     }
   };
 
+  // On a small touch screen the enlarged view adds nothing (the picture already fills the width and
+  // pinch-zoom is there): the screenshot becomes a plain frame, not a button that does nothing.
+  const smallTouch = window.matchMedia('(hover: none) and (pointer: coarse) and (max-width: 899px)');
+  const frames = zooms.map(() => document.createElement('div'));
+  frames.forEach((frame) => { frame.className = 'zoom zoom-static'; });
+  const setZoomable = () => {
+    zooms.forEach((button, i) => {
+      const from = smallTouch.matches ? button : frames[i];
+      const to = smallTouch.matches ? frames[i] : button;
+      const img = from.querySelector('img');
+      if (!img) return;
+      to.appendChild(img);
+      from.replaceWith(to);
+    });
+  };
+  setZoomable();
+  smallTouch.addEventListener('change', setZoomable);
+
   zooms.forEach((button, i) => {
     button.addEventListener('click', () => {
       current = i;
