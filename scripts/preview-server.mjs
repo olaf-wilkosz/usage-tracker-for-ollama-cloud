@@ -138,6 +138,13 @@ function scenario(name, now = Date.now()) {
       raw.balance = { included: { balance_usd: 0, allowance_usd: 0, period: { from: '', until: '' } }, purchased: { balance_usd: 18.4 } };
       return finish(raw);
     }
+    case 'spent': {
+      // a plan whose included usage is used up, with purchased credits paying now
+      const raw = scaleCost(busyRaw(now), 3.4);
+      raw.balance.included.balance_usd = 0;
+      raw.balance.purchased.balance_usd = 3.1;
+      return finish(raw);
+    }
     case 'offline': {
       const { data, activity } = finish(busyRaw(now));
       return { data: { ...data, status: 'network_error', stale: true, lastFetch: new Date(now - 26 * 60e3).toISOString() }, activity };

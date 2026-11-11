@@ -40,6 +40,7 @@ const PAGES = [
   ['popup: rejected key', '/popup?scenario=badkey'],
   ['popup: offline (stale data)', '/popup?scenario=offline&pinned=1'],
   ['popup: legacy plan', '/popup?scenario=legacy&pinned=1'],
+  ['popup: included usage spent, credits paying', '/popup?scenario=spent&pinned=1'],
   ['popup: month heatmap', '/popup?scenario=busy&pinned=1&click=%23activityMonthBtn'],
   ['popup: settings', '/popup?scenario=busy&pinned=1&settings=1'],
   ['options: first run', '/options?scenario=fresh'],

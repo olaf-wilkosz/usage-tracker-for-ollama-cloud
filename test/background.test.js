@@ -209,7 +209,7 @@ await test('real Free-account responses: meter, credits, models, recent hours, i
 
   assert.ok(icons.at(-1).imageData, 'drawn icon set');
   assert.match(titles.at(-1), /Included usage: 22\.4%/);
-  assert.match(titles.at(-1), /Credits: \$0/);
+  assert.doesNotMatch(titles.at(-1), /Credits/, 'nothing bought and included usage left: no "Credits: $0" noise');
   assert.deepEqual(badge, { text: '22', color: '#2e7d32', textColor: '#ffffff' });
 });
 
@@ -366,6 +366,47 @@ await test('an account with included credits never gets credits alerts or a doll
   assert.equal(notes.filter((n) => n.id === 'ollama-usage-credits').length, before);
   assert.equal(badge.text, '10', 'percentage badge as before');
   assert.equal(store.ollamaUsageData.credits.runwayDays, undefined);
+});
+
+await test('included usage spent, purchased credits take over: runway, one alert per step, credits in the tooltip', async () => {
+  const spent = (purchased) => ({ ...balanceUsed(100), purchased: { balance_usd: purchased } });
+  const pace = (perDay) => {
+    const month = JSON.parse(JSON.stringify(FREE.month));
+    month.buckets.forEach((bucket) => { bucket.usage_usd = 0; });
+    month.buckets.at(-1).usage_usd = perDay * 8;
+    return month;
+  };
+  const credit = () => notes.filter((n) => n.id === 'ollama-usage-credits');
+  const start = credit().length;
+  delete store.ollamaCreditsState;
+  delete store.ollamaMonthCache;
+
+  world = { ...FREE, balance: spent(20), month: pace(1) };
+  await refresh();
+  assert.equal(store.ollamaUsageData.credits.runwayDays, 20, 'the purchased part is what is being used now');
+  assert.equal(badge.text, '100', 'the ring and percentage still describe the included usage');
+  assert.match(titles.at(-1), /Credits: \$20\.00/);
+  assert.equal(credit().length, start, 'plenty left: quiet');
+
+  delete store.ollamaMonthCache;
+  world = { ...FREE, balance: spent(2), month: pace(1) };
+  await refresh();
+  assert.equal(credit().length, start + 1, 'two days of credits left after the included part ran out');
+
+  // never bought anything: the usage alert says it all, a credits alert would be wrong
+  delete store.ollamaCreditsState;
+  delete store.ollamaMonthCache;
+  const before = credit().length;
+  world = { ...FREE, balance: spent(0), month: pace(1) };
+  await refresh();
+  world = { ...FREE, balance: spent(0), month: pace(1) };
+  await refresh();
+  assert.equal(credit().length, before);
+
+  // included usage left and nothing bought: no credits line at all
+  world = { ...FREE, balance: { ...balanceUsed(40), purchased: { balance_usd: 0 } } };
+  await refresh();
+  assert.doesNotMatch(titles.at(-1), /Credits/);
 });
 
 await test('legacy plan (session + weekly) -> concentric rings, badge empty', async () => {

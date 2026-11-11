@@ -7,7 +7,7 @@
  * settings panel is toggled by the gear icon.
  */
 
-import { formatResetTime, formatRunway, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
+import { creditsRelevant, formatResetTime, formatRunway, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
   isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, testNotificationMessage, describeBuild, enhanceNumberInputs, DEFAULT_SETTINGS
@@ -219,8 +219,8 @@ function renderMeters(meters, status) {
   }
 }
 
-function renderCredits(credits) {
-  if (!credits) {
+function renderCredits(credits, meters) {
+  if (!creditsRelevant(credits, meters)) {
     elements.creditsBlock.hidden = true;
     return;
   }
@@ -613,7 +613,7 @@ function renderUsage(data) {
   }
 
   renderMeters(data.meters || [], data.status);
-  renderCredits(data.credits);
+  renderCredits(data.credits, data.meters || []);
   renderModels(data);
   renderRecent(data.recentHours, data.recentDays);
 

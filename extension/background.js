@@ -6,7 +6,7 @@
  */
 
 import {
-  getBadgeColor, getBadgeStyle, getCreditsBadgeStyle, formatBadgeAmount, formatRunway, formatUsd, emptyUsage
+  getBadgeColor, getBadgeStyle, getCreditsBadgeStyle, creditsInUse, creditsRelevant, formatBadgeAmount, formatRunway, formatUsd, emptyUsage
 } from './usage.js';
 import { apiGet, fetchApiData, buildUsage, extractActivity, statusForError } from './ollama-api.js';
 import { sealSecret, openSecret, destroySealingKey } from './secret-store.js';
@@ -178,7 +178,7 @@ async function updateBadge(data, settings = DEFAULT_SETTINGS, creditsInfo = null
   }
 
   const withPercent = (data.meters || []).filter((m) => m.usedPercent !== null && m.usedPercent !== undefined);
-  const creditsLine = data.credits ? `Credits: ${data.credits.text}` : null;
+  const creditsLine = creditsRelevant(data.credits, data.meters || []) ? `Credits: ${data.credits.text}` : null;
 
   if (withPercent.length === 0) {
     // No percentage to draw: no data yet, a persistent error, or an account without included
@@ -267,15 +267,21 @@ async function checkThresholdNotifications(data, settings) {
  * Pay as you go: where the purchased credits stand. "low" = they last the configured number of
  * days or less at the recent pace, "empty" = nothing left. Only fresh readings are recorded.
  * @returns {Promise<{level: string|null, hadCredits: boolean, previous: Object|null}|null>}
- *   null for accounts with included usage (no credits alerts there) or no credits information
+ *   null while included usage is left (the purchased credits are not touched yet, and the
+ *   percentage alerts cover that) or when there is no credits information
  */
 async function trackCredits(data, settings) {
-  if (!data.credits || (data.meters || []).length > 0) return null;
+  const meters = data.meters || [];
+  if (!data.credits || !creditsInUse(meters)) return null;
   const stored = (await chrome.storage.local.get(CREDITS_STATE_KEY))[CREDITS_STATE_KEY];
   const { amount, runwayDays } = data.credits;
   const low = settings.lowCreditsDays;
-  const level = amount <= 0 ? 'empty' : low > 0 && runwayDays !== undefined && runwayDays <= low ? 'low' : null;
-  const state = { level, hadCredits: Boolean(stored?.hadCredits) || amount > 0 };
+  const hadCredits = Boolean(stored?.hadCredits) || amount > 0;
+  let level = amount <= 0 ? 'empty' : low > 0 && runwayDays !== undefined && runwayDays <= low ? 'low' : null;
+  // Included usage is spent and nothing was ever bought: the usage alert already said it, and
+  // "your purchased credits are used up" would be wrong
+  if (level === 'empty' && meters.length > 0 && !hadCredits) level = null;
+  const state = { level, hadCredits };
   if (data.status === 'ok') await chrome.storage.local.set({ [CREDITS_STATE_KEY]: state });
   return { ...state, previous: stored ?? null };
 }

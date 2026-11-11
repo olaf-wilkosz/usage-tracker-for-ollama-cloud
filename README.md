@@ -27,7 +27,7 @@ Credits, models and activity in one click, a live badge on the toolbar, and aler
 
 - **Live toolbar badge**: a ring and a percentage, green / orange / red. Several usage windows (legacy plans) show as concentric rings.
 - **Included and purchased credits**: what is left, when it refills, and your purchased balance.
-- **Pay as you go**: the credits balance is the toolbar badge ("$18"), the popup says how many days it lasts at your recent pace, and a low-credits alert fires before it runs out.
+- **Pay as you go**: the credits balance is the toolbar badge ("$18"), the popup says how many days it lasts at your recent pace, and a low-credits alert fires before it runs out. On a plan with included usage the same applies once the included part is spent.
 - **Models breakdown**: requests and cost per model for the calendar month so far (the default, exactly what the usage page on ollama.com shows), the last 7 days or the last 30 days; the busiest recent hours.
 - **Keyboard**: `Alt` + `Shift` + `U` opens the popup (changeable in the browser's extension shortcuts).
 - **Activity heatmap**: last week by hour, last 30 days by day.

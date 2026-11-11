@@ -115,6 +115,25 @@ export function getCreditsBadgeStyle({ amount, runwayDays = null, lowDays, hadCr
   return { color: '#2e7d32', textColor: '#ffffff' };
 }
 
+/**
+ * Purchased credits are what pays for requests when there is no included usage at all (pay as
+ * you go) or when all of it is spent (included credits are used first, then purchased ones).
+ * @param {Array<{usedPercent?: number|null}>} meters
+ */
+export function creditsInUse(meters) {
+  return meters.length === 0 || meters.every((m) => typeof m.usedPercent === 'number' && m.usedPercent >= 100);
+}
+
+/**
+ * Whether the credits balance is worth showing. An account that lives on included usage and has
+ * bought nothing has "$0" credits - that is not news and no reason to say "No credits left".
+ * @param {{amount: number}|null} credits
+ * @param {Array} meters
+ */
+export function creditsRelevant(credits, meters) {
+  return Boolean(credits) && (credits.amount > 0 || creditsInUse(meters));
+}
+
 /** "less than a day", "1 day", "12 days", "90+ days" for a number of days of credits left. */
 export function formatRunway(days) {
   if (days < 1) return 'less than a day';

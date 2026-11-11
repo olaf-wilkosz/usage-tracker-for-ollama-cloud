@@ -10,7 +10,7 @@
  * three calls every few minutes stays far below that. Requests never carry cookies.
  */
 
-import { formatUsd } from './usage.js';
+import { creditsInUse, formatUsd } from './usage.js';
 
 export const API_BASE = 'https://ollama.com/api';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -221,9 +221,10 @@ export function buildUsage({ balance, day, month }, now = Date.now()) {
   const purchased = balance.purchased?.balance_usd;
   const credits = isNumber(purchased) ? { amount: purchased, text: formatUsd(purchased) } : null;
 
-  // Pay as you go (no included credits): how long the balance lasts at the recent pace. With
-  // included credits the pace says nothing about the purchased balance, which is used second.
-  if (credits && meters.length === 0 && credits.amount > 0) {
+  // How long the purchased balance lasts at the recent pace - once it is what pays for requests:
+  // pay as you go (no included credits) or included credits all spent. While included usage is
+  // left, the pace says nothing about the purchased balance, which is used second.
+  if (credits && creditsInUse(meters) && credits.amount > 0) {
     const perDay = dailySpend(month.buckets, now);
     if (perDay >= MIN_SPEND_PER_DAY) {
       credits.perDay = perDay;

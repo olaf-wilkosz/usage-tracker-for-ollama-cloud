@@ -162,6 +162,24 @@ test('buildUsage: pay as you go shows how long the credits last at the recent pa
   assert.equal(Api.buildUsage(data, noon).credits.runwayDays, undefined);
   data.balance = { included: { balance_usd: 5, allowance_usd: 10, period: {} }, purchased: { balance_usd: 15 } };
   assert.equal(Api.buildUsage(data, noon).credits.runwayDays, undefined, 'the pace does not say how long the purchased part lasts');
+  // ... until the included part is all spent: then the purchased credits are what pays
+  data.balance = { included: { balance_usd: 0, allowance_usd: 10, period: {} }, purchased: { balance_usd: 15 } };
+  data.month.buckets.at(-1).usage_usd = 3;
+  assert.ok(Api.buildUsage(data, noon).credits.runwayDays > 0);
+});
+
+test('usage helpers: when purchased credits are in use and worth showing', () => {
+  const at = (...percents) => percents.map((usedPercent) => ({ usedPercent }));
+  assert.equal(U.creditsInUse([]), true, 'pay as you go');
+  assert.equal(U.creditsInUse(at(99.9)), false);
+  assert.equal(U.creditsInUse(at(100)), true, 'included usage spent');
+  assert.equal(U.creditsInUse(at(100, 40)), false, 'one of two windows is still open');
+  assert.equal(U.creditsInUse([{ usedPercent: null }]), false, 'unknown: do not guess');
+  assert.equal(U.creditsRelevant(null, []), false);
+  assert.equal(U.creditsRelevant({ amount: 0 }, at(30)), false, 'included usage left and nothing bought');
+  assert.equal(U.creditsRelevant({ amount: 4 }, at(30)), true);
+  assert.equal(U.creditsRelevant({ amount: 0 }, at(100)), true, 'nothing left at all');
+  assert.equal(U.creditsRelevant({ amount: 0 }, []), true);
 });
 
 test('usage helpers: toolbar badge text and colors for a credits balance', () => {
