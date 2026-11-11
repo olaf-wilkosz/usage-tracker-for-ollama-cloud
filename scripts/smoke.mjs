@@ -109,7 +109,7 @@ async function openPage(path) {
 }
 
 await sleep(3000); // the worker polls up to ~1.5 s for the popup before it falls back to the welcome tab
-console.log("pages the browser opened on install:", JSON.stringify((await targets()).filter((t) => /(popup|options).html$/.test(t.url)).map((t) => t.url.split("/").pop())));
+console.log("pages the browser opened on install:", JSON.stringify((await targets()).filter((t) => /(popup|options)\.html(\?|$)/.test(t.url)).map((t) => t.url.split("/").pop())));
 // What the browser itself says about the manifest (its own extensions page): install warnings
 const manager = await openPage("chrome://extensions");
 console.log("manifest warnings / errors:", await manager.evaluate(`chrome.developerPrivate.getExtensionsInfo({ includeDisabled: true, includeTerminated: true }).then((all) => {

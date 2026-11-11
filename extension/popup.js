@@ -18,7 +18,7 @@ import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const OLLAMA_BILLING_URL = 'https://ollama.com/settings/billing';
+const OLLAMA_CREDITS_URL = 'https://ollama.com/dashboard'; // where credits are bought
 const COUNTDOWN_REFRESH_MS = 30000;
 const RESET_PROGRESSIVE = { Resets: 'Resetting', Refills: 'Refilling', Renews: 'Renewing' };
 
@@ -230,7 +230,7 @@ function renderCredits(credits) {
   elements.creditsNote.textContent = '';
   if (credits.amount <= 0) {
     const link = el('a', 'credits-link', 'Add credits');
-    link.href = OLLAMA_BILLING_URL;
+    link.href = OLLAMA_CREDITS_URL;
     link.target = '_blank';
     link.rel = 'noopener';
     elements.creditsNote.append('No credits left. ', link);
@@ -766,6 +766,8 @@ function closeSettingsView() {
  * Initialize popup
  */
 async function init() {
+  // Opened in a window of its own (first run) instead of from the toolbar: fill that window
+  if (new URLSearchParams(location.search).has('window')) document.body.classList.add('in-window');
   enhanceNumberInputs();
   // Load initial data
   const [data, settings, stored] = await Promise.all([

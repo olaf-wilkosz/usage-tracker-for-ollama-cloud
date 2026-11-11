@@ -578,7 +578,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  */
 async function showSetupWindow() {
   try {
-    await chrome.windows.create({ url: chrome.runtime.getURL('popup.html'), type: 'popup', width: 400, height: 690, focused: true });
+    await chrome.windows.create({ url: chrome.runtime.getURL('popup.html?window=1'), type: 'popup', width: 400, height: 690, focused: true });
   } catch {
     chrome.runtime.openOptionsPage();
   }

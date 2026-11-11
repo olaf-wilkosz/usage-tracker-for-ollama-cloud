@@ -130,7 +130,9 @@ async function keyboardAudit(call, evaluate) {
   }
 
   const problems = [];
-  const unreachable = expected.names.filter((_, i) => !visited.has(i));
+  // A control that disabled itself on the way (a carousel's "next" at the last slide) is not a failure
+  const disabledNow = new Set(JSON.parse(await evaluate(`JSON.stringify([...document.querySelectorAll('[data-kbd]')].filter((el) => el.disabled).map((el) => Number(el.dataset.kbd)))`)));
+  const unreachable = expected.names.filter((_, i) => !visited.has(i) && !disabledNow.has(i));
   if (unreachable.length) problems.push(`not reachable with Tab: ${unreachable.join(' | ')}`);
   if (noIndicator.size) problems.push(`no visible focus indicator on: ${[...noIndicator].join(' | ')}`);
   if (expected.positive) problems.push(`${expected.positive} element(s) with a positive tabindex`);

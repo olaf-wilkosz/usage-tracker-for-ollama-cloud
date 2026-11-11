@@ -9,7 +9,7 @@ Everything needed to publish lives here and is produced by scripts, so a release
 | Promo tiles (440x280, 1400x560) | `promo/` |
 | Sources of the images above (HTML) | `slides/`, `promo/*.html` |
 
-Re-render the images after UI changes: `npm run render` (uses an installed Edge, Chrome or Brave).
+Re-render the images after UI changes: `npm run render` (uses an installed Edge, Chrome or Brave). It writes the store PNGs and, with sharp, the WebP copies the website uses (`screenshots/web`, `promo/popup*.webp`).
 
 ## Checklist for a release
 

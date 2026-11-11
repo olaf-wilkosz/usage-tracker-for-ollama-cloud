@@ -51,33 +51,53 @@
   });
   sync();
 
-  // ---- lightbox: the same screenshot at twice the resolution ----
+  // ---- lightbox: the same screenshots at twice the resolution, kept in step with the carousel ----
   const dialog = document.getElementById('lightbox');
   const image = dialog.querySelector('img');
-  const zoomBtn = dialog.querySelector('.lb-zoom');
-  const closeBtn = dialog.querySelector('.lb-close');
+  const count = dialog.querySelector('.lb-count');
+  const lbPrev = dialog.querySelector('.lb-prev');
+  const lbNext = dialog.querySelector('.lb-next');
+  const zooms = slides.map((slide) => slide.querySelector('.zoom'));
+  let current = 0;
 
-  const setActualSize = (actual) => {
-    image.classList.toggle('actual', actual);
-    zoomBtn.setAttribute('aria-pressed', String(actual));
-    zoomBtn.textContent = actual ? 'Fit to window' : 'Actual size';
+  const show = (index) => {
+    current = Math.max(0, Math.min(zooms.length - 1, index));
+    const button = zooms[current];
+    image.src = button.dataset.full;
+    image.alt = button.querySelector('img').alt;
+    count.textContent = `${current + 1} / ${zooms.length}`;
+    lbPrev.disabled = current === 0;
+    lbNext.disabled = current === zooms.length - 1;
+    // the carousel underneath follows, so closing the view lands on the same screenshot
+    track.scrollTo({ left: current * track.clientWidth, behavior: 'auto' });
+    // warm up the neighbours so stepping through is instant
+    for (const n of [current - 1, current + 1]) {
+      if (zooms[n]) new Image().src = zooms[n].dataset.full;
+    }
   };
 
-  carousel.querySelectorAll('.zoom').forEach((button) => {
+  zooms.forEach((button, i) => {
     button.addEventListener('click', () => {
-      image.src = button.dataset.full;
-      image.alt = button.querySelector('img').alt;
-      setActualSize(false);
+      show(i);
+      document.documentElement.classList.add('lb-open'); // the page behind stops scrolling
       dialog.showModal();
     });
   });
 
-  zoomBtn.addEventListener('click', () => setActualSize(!image.classList.contains('actual')));
-  image.addEventListener('click', () => setActualSize(!image.classList.contains('actual')));
-  closeBtn.addEventListener('click', () => dialog.close());
-  // a click on the dark backdrop (the dialog element itself) closes it
+  lbPrev.addEventListener('click', () => show(current - 1));
+  lbNext.addEventListener('click', () => show(current + 1));
+  dialog.querySelector('.lb-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') { show(current - 1); event.preventDefault(); }
+    if (event.key === 'ArrowRight') { show(current + 1); event.preventDefault(); }
+  });
+  // a click on the dark area around the picture (the dialog element itself) closes it
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) dialog.close();
   });
-  dialog.addEventListener('close', () => { image.removeAttribute('src'); });
+  dialog.addEventListener('close', () => {
+    document.documentElement.classList.remove('lb-open');
+    image.removeAttribute('src');
+    sync();
+  });
 })();

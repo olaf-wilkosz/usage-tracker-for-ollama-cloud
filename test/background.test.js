@@ -127,7 +127,7 @@ await test('first install: the popup opens in a small window of its own, the opt
   await handlers.installed({ reason: 'install' });
   assert.equal(created.length, 1);
   assert.equal(created[0].type, 'popup');
-  assert.equal(created[0].url, 'popup.html');
+  assert.equal(created[0].url, 'popup.html?window=1', 'the popup, told that it fills a window');
   assert.equal(openedOptions, 0, 'one setup surface, not two');
 
   await handlers.installed({ reason: 'update' });

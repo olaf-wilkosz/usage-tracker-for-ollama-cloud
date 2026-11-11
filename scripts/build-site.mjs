@@ -15,10 +15,11 @@ const SLIDES = ['01-overview', '02-payg', '03-alerts', '04-models', '05-activity
 
 const IMAGES = [
   ...SLIDES.flatMap((name) => [
-    [`store/screenshots/${name}.png`, `img/${name}.png`],
-    [`store/screenshots/hi/${name}.png`, `img/hi/${name}.png`]
+    [`store/screenshots/web/${name}.webp`, `img/${name}.webp`],
+    [`store/screenshots/web/hi/${name}.webp`, `img/hi/${name}.webp`]
   ]),
-  ['store/promo/popup.png', 'img/popup.png'],
+  ['store/promo/popup-1x.webp', 'img/popup-1x.webp'],
+  ['store/promo/popup.webp', 'img/popup.webp'],
   ['store/promo/og-1200x630.png', 'img/og.png'],
   ['extension/icons/icon128.png', 'img/icon128.png']
 ];
