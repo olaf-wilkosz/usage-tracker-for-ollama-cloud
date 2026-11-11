@@ -37,7 +37,7 @@ Credits, models and activity in one click, a live badge on the toolbar, and aler
 
 ## Install
 
-Works in Chrome, Edge and Brave (121+) and Firefox or Zen (140+). The Chrome Web Store and Firefox Add-ons listings are on the way. Until then:
+Works in Chrome, Edge and Brave (110+) and Firefox or Zen (140+). The Chrome Web Store and Firefox Add-ons listings are on the way. Until then:
 
 1. Download `usage-tracker-for-ollama-cloud-<version>-chrome.zip` from the [latest release](https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/releases/latest) and unzip it (or clone this repo and use the `extension/` folder).
 2. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the unzipped folder.

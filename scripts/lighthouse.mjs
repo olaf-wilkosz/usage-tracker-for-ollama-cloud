@@ -12,15 +12,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startServer } from './preview-server.mjs';
+import { stopBrowser } from './stop-browser.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PORT = 8768;
+const DEBUG_PORT = 9335;
 const RUNS = 3;
 const PAGES = [['home', '/site/'], ['privacy policy', '/site/privacy.html']];
 const BARS = { performance: 0.9, accessibility: 1, 'best-practices': 1, seo: 1 };
 
-// Chrome first: Lighthouse launches the browser itself and Edge hands over to another process,
-// which it cannot follow
+// Chrome first (Edge hands over to another process, which is awkward to follow)
 const CANDIDATES = [
   process.env.BROWSER,
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -42,11 +43,24 @@ const run = (command, args, env) => new Promise((resolve) => {
   child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-2000); });
   child.on('close', (status) => resolve({ status, stderr }));
 });
-const median =(values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 
 const server = await startServer(PORT);
 const work = mkdtempSync(join(tmpdir(), 'ut-lh-'));
+const profile = mkdtempSync(join(tmpdir(), 'ut-lh-profile-'));
 let failed = false;
+
+// The browser is started here (a throwaway profile, so no extensions) and Lighthouse only connects
+// to it, so that it can be closed gracefully at the end: a browser that is killed leaves stale
+// entries in the Windows shell (Alt+Tab).
+const chrome = spawn(browser, [
+  '--headless=new', `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-gpu',
+  ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'
+], { stdio: 'ignore' });
+for (let i = 0; i < 60; i++) {
+  if (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/version`).then((r) => r.ok, () => false)) break;
+  await new Promise((resolve) => setTimeout(resolve, 250));
+}
 
 try {
   for (const [name, path] of PAGES) {
@@ -58,9 +72,8 @@ try {
         cli, `http://127.0.0.1:${PORT}${path}`,
         '--output=json', `--output-path=${output}`, '--quiet',
         '--only-categories=performance,accessibility,best-practices,seo',
-        // Lighthouse starts the browser with a throwaway profile (no extensions); CI runners need no sandbox
-        `--chrome-flags=--headless=new --disable-gpu${process.env.CI ? ' --no-sandbox' : ''}`
-      ], { ...process.env, CHROME_PATH: browser });
+        `--port=${DEBUG_PORT}`
+      ], { ...process.env });
       if (result.status !== 0 || !existsSync(output)) {
         console.log(`FAIL  ${name}: Lighthouse did not run\n${result.stderr?.slice(-600)}`);
         failed = true;
@@ -82,6 +95,7 @@ try {
   }
 } finally {
   server.close?.();
+  await stopBrowser(chrome, profile, DEBUG_PORT);
   rmSync(work, { recursive: true, force: true });
 }
 

@@ -78,9 +78,7 @@ On install without a working key the worker opens the toolbar popup itself (`chr
 
 ## One codebase, two browsers
 
-`extension/` is the Chrome / Edge / Brave extension and loads unpacked there directly; its manifest is the clean Chrome one (a manifest carrying both `service_worker` and `scripts` was tried so Firefox could load the same folder, but Brave reports a warning for `background.scripts` in the Errors tab, which would greet every contributor). Firefox and Zen load `dist/firefox`: the same files with `background.scripts` (event page), the add-on id and the data-collection declaration (`npm run build`; `npm run dev:firefox` keeps the folder in sync while editing, in place, because a browser may have it loaded).
-
-`extension/` is the source for Chrome, Edge, Brave and Firefox. `scripts/build.mjs` writes two thin manifests: Chrome keeps `background.service_worker`; Firefox gets `background.scripts` (event page, ES module), a gecko add-on id and `data_collection_permissions`. The code feature-detects the few differences (`notifications.getPermissionLevel` does not exist on Firefox).
+`extension/` is the Chrome / Edge / Brave extension and loads unpacked there directly; its manifest is the clean Chrome one (a manifest carrying both `service_worker` and `scripts` was tried so Firefox could load the same folder, but Brave reports a warning for `background.scripts` in the Errors tab, which would greet every contributor). Firefox and Zen load `dist/firefox`: the same files with `background.scripts` (event page), the add-on id and the data-collection declaration (`npm run build`; `npm run dev:firefox` keeps the folder in sync while editing, in place, because a browser may have it loaded). The code feature-detects the few remaining differences (`notifications.getPermissionLevel` does not exist on Firefox; `runtime.getBrowserInfo` identifies it, and the popup cannot be opened without a click there).
 
 ## Accessibility
 

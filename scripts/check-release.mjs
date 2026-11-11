@@ -38,6 +38,40 @@ check(/unofficial|not affiliated/i.test(manifest.description), 'description must
 // the store listing text must match the manifest summary
 check(read(join(ROOT, 'store', 'listing.md')).includes(manifest.description), 'store/listing.md does not contain the manifest description verbatim');
 
+// the browser versions the texts promise are the ones the manifest and the Firefox build require
+{
+  const chromeMin = manifest.minimum_chrome_version;
+  const firefoxMin = read(join(ROOT, 'scripts', 'build.mjs')).match(/FIREFOX_MIN_VERSION = '(\d+)/)?.[1];
+  check(Boolean(chromeMin) && Boolean(firefoxMin), 'minimum_chrome_version (manifest) or FIREFOX_MIN_VERSION (build.mjs) is missing');
+  for (const file of ['README.md', join('store', 'listing.md'), join('landing', 'index.html')]) {
+    const text = read(join(ROOT, file));
+    const chromeMentions = [...text.matchAll(/Chrome, Edge and Brave \(?(?:version )?(\d+)(?:\+| or newer)/g)].map((m) => m[1]);
+    const firefoxMentions = [...text.matchAll(/Firefox(?: or|\s+and) Zen \(?(?:version )?(\d+)(?:\+| or newer)/g)].map((m) => m[1]);
+    for (const v of chromeMentions) check(v === chromeMin, `${file} says Chrome ${v}+ but the manifest needs ${chromeMin}`);
+    for (const v of firefoxMentions) check(v === firefoxMin, `${file} says Firefox ${v}+ but the build requires ${firefoxMin}`);
+  }
+  check(/Chrome, Edge and Brave \(?\d+\+/.test(read(join(ROOT, 'README.md'))), 'README.md no longer states the minimum Chrome version (the check above would pass vacuously)');
+}
+
+// the changelog has a section for this version, and a tagged release is no longer "unreleased"
+{
+  const changelog = read(join(ROOT, 'CHANGELOG.md'));
+  const heading = changelog.match(new RegExp(`^## \\[${manifest.version.replaceAll('.', '\\.')}\\] - (.+)$`, 'm'));
+  check(Boolean(heading), `CHANGELOG.md has no "## [${manifest.version}] - date" section`);
+  if (tag && heading) check(/^\d{4}-\d{2}-\d{2}$/.test(heading[1]), `CHANGELOG.md still says "${heading[1]}" for ${manifest.version}: set its date before tagging`);
+}
+
+// docs: a heading that appears twice in one file means a paragraph was added instead of replaced
+for (const file of ['README.md', 'CHANGELOG.md', ...readdirSync(join(ROOT, 'docs')).map((f) => join('docs', f)), join('store', 'README.md'), join('store', 'listing.md')]) {
+  if (!file.endsWith('.md')) continue;
+  const seen = new Set();
+  for (const [, title] of read(join(ROOT, file)).matchAll(/^#{2,3} (.+)$/gm)) {
+    if (file === 'CHANGELOG.md' && /^(Changed|Added|Removed|Fixed)$/.test(title)) continue; // repeated per version on purpose
+    check(!seen.has(title), `${file} has the heading "${title}" twice`);
+    seen.add(title);
+  }
+}
+
 // permissions
 check(JSON.stringify([...(manifest.permissions || [])].sort()) === JSON.stringify(EXPECTED_PERMISSIONS),
   `permissions changed: ${JSON.stringify(manifest.permissions)} (expected ${JSON.stringify(EXPECTED_PERMISSIONS)})`);
