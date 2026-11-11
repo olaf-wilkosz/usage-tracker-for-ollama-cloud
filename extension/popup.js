@@ -10,7 +10,7 @@
 import { formatResetTime, formatRunway, formatUsd, getBadgeColor, getTextColor, secondsUntil } from './usage.js';
 import {
   loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics, sendTestNotification, saveApiKey,
-  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, testNotificationMessage, describeBuild, DEFAULT_SETTINGS
+  isPinnedToToolbar, isConnected, removeApiKey, showInlineStatus, testNotificationMessage, describeBuild, enhanceNumberInputs, DEFAULT_SETTINGS
 } from './settings.js';
 import { buildLegendItems, summarizeActivity, formatDay, formatDayRange, rangeEntry } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
@@ -766,6 +766,7 @@ function closeSettingsView() {
  * Initialize popup
  */
 async function init() {
+  enhanceNumberInputs();
   // Load initial data
   const [data, settings, stored] = await Promise.all([
     loadUsageData(),

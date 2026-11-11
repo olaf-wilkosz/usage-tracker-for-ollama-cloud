@@ -16,7 +16,8 @@ Credits, models and activity in one click, a live badge on the toolbar, and aler
 [Download](https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/releases/latest) &middot;
 [Privacy](https://olaf-wilkosz.github.io/usage-tracker-for-ollama-cloud/privacy.html)
 
-<img src="store/screenshots/01-overview.png" alt="The extension popup showing included usage, purchased credits and a models donut (sample data)" width="760">
+<img src="store/screenshots/01-overview.png" alt="The extension popup for a plan with included credits: usage, purchased credits and a models donut (sample data)" width="380">
+<img src="store/screenshots/02-payg.png" alt="The popup for a pay-as-you-go account: credits balance and how many days it lasts, with toolbar badges $18, $3.6 and $0 (sample data)" width="380">
 
 </div>
 
@@ -26,20 +27,21 @@ Credits, models and activity in one click, a live badge on the toolbar, and aler
 
 - **Live toolbar badge**: a ring and a percentage, green / orange / red. Several usage windows (legacy plans) show as concentric rings.
 - **Included and purchased credits**: what is left, when it refills, and your purchased balance.
+- **Pay as you go**: the credits balance is the toolbar badge ("$18"), the popup says how many days it lasts at your recent pace, and a low-credits alert fires before it runs out.
 - **Models breakdown**: requests and cost per model for the calendar month so far (the default, exactly what the usage page on ollama.com shows), the last 7 days or the last 30 days; the busiest recent hours.
 - **Keyboard**: `Alt` + `Shift` + `U` opens the popup (changeable in the browser's extension shortcuts).
 - **Activity heatmap**: last week by hour, last 30 days by day.
-- **Alerts that don't nag**: warning and critical thresholds; one notification per cycle (again only on escalation or reset).
+- **Alerts that don't nag**: warning and critical thresholds, a low-credits alert on pay as you go; one notification per step (again only when it gets worse).
 - **Peak / off-peak banner**: Ollama's published pricing hours, computed locally.
 - **Accessible**: text and badge colors meet WCAG AA contrast, controls are labelled, and the heatmap comes with a text summary for screen readers. An automated axe-core audit (`npm run a11y`) covers the popup, the options page and the website; [docs/accessibility-testing.md](docs/accessibility-testing.md) is the manual keyboard and screen-reader script.
 
 ## Install
 
-The Chrome Web Store and Firefox Add-ons listings are on the way. Until then:
+Works in Chrome, Edge and Brave (121+) and Firefox or Zen (140+). The Chrome Web Store and Firefox Add-ons listings are on the way. Until then:
 
 1. Download `usage-tracker-for-ollama-cloud-<version>-chrome.zip` from the [latest release](https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/releases/latest) and unzip it (or clone this repo and use the `extension/` folder).
 2. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the unzipped folder.
-3. Click the extension icon (a setup page also opens on first install). Create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys), paste it into the popup (or the setup page) and click **Connect**. The popup closes when you switch tabs, so just reopen it after copying the key.
+3. A small setup window opens by itself on first install (or click the extension icon). Create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys), paste it in and click **Connect**; the window turns into your usage view. The toolbar popup closes when you switch tabs, so after copying the key just reopen it.
 4. Pin the extension to the toolbar (extensions menu, then the pin) to keep the live badge in view; the popup reminds you until you do.
 
 That is the whole setup.

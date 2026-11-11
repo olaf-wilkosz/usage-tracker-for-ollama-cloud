@@ -929,3 +929,59 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* "-" and "+" buttons around number fields (built in settings.js, enhanceNumberInputs) */
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  flex: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.stepper:focus-within {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.25);
+}
+
+.stepper input[type="number"] {
+  width: 54px;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+}
+
+.stepper input[type="number"]:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+
+.step-btn {
+  width: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.step-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-primary);
+}
+
+.step-btn:active {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+@media (forced-colors: active) {
+  .stepper { border-color: ButtonText; }
+}

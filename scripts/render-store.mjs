@@ -29,6 +29,8 @@ const browser = CANDIDATES.find((path) => path && existsSync(path));
 if (!browser) throw new Error('No Chromium-based browser found; set BROWSER=path');
 
 // [page under the preview server (or a /path), output file (relative to the repo), width, height, scale]
+// The store takes the 1280x800 files; store/screenshots/hi holds the same slides at twice the
+// resolution for the website's enlarged view.
 const JOBS = [
   ['store/slides/01-overview.html', 'store/screenshots/01-overview.png', 1280, 800],
   ['store/slides/02-payg.html', 'store/screenshots/02-payg.png', 1280, 800],
@@ -39,6 +41,9 @@ const JOBS = [
   ['store/promo/small-440x280.html', 'store/promo/small-440x280.png', 440, 280],
   ['store/promo/marquee-1400x560.html', 'store/promo/marquee-1400x560.png', 1400, 560],
   ['store/promo/og-1200x630.html', 'store/promo/og-1200x630.png', 1200, 630],
+  ...['01-overview', '02-payg', '03-alerts', '04-models', '05-activity', '06-private'].map((name) => [
+    `store/slides/${name}.html`, `store/screenshots/hi/${name}.png`, 1280, 800, 2
+  ]),
   // the bare popup (2x), for the website hero
   ['/popup?scenario=busy&pinned=1', 'store/promo/popup.png', 360, 574, 2]
 ];

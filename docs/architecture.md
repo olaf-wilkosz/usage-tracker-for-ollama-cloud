@@ -72,6 +72,10 @@ Early versions read `ollama.com/settings` with the user's session cookies and pa
 
 Trade-offs accepted: the user must create an API key; per-request detail (the old "Recent requests" table) is gone in favour of hourly buckets; model colors are no longer read from the page (a small table of observed colors plus a hash fallback, decorative only).
 
+## First run
+
+On install without a working key the worker opens `popup.html` in a small window of its own (`chrome.windows.create({ type: 'popup' })`): the setup (paste the key) and, once connected, the usage view are the same screen as the toolbar popup. A regular window, so the user closes it like any other; `action.openPopup()` was tried first and dropped (opened without a click it can sit in an unfocused window, never gets the blur that closes a popup and stays on screen). The options page is the fallback and the place for the full settings. A reinstall that kept a working key opens nothing.
+
 ## One codebase, two browsers
 
 The source manifest works in both families as it is: Chrome 121+ takes `background.service_worker` and ignores `scripts`, Firefox takes `scripts` (event page) and ignores `service_worker`, and each ignores the other's settings (`browser_specific_settings`). Brave and Edge report no manifest warnings (`npm run smoke` asks the browser). So `extension/` loads unpacked in Chrome, Edge, Brave and Firefox / Zen (`about:debugging` → Load Temporary Add-on → `extension/manifest.json`) with no build step.

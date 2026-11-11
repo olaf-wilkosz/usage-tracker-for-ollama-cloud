@@ -5,12 +5,13 @@
 //   node scripts/preview-server.mjs            -> http://localhost:8765
 //   /popup?scenario=free|busy|legacy|payg|connect|badkey|offline|empty[&settings=1][&pinned=1][&click=#id][&scroll=#id]
 //   /options?scenario=connected|fresh
+//   /site/                                     the built website (dist/site)
 //
 // "free" is a real Free-account response (test/fixtures) moved to the present; the other
 // scenarios are made-up sample numbers.
 import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -212,6 +213,12 @@ export function startServer(port = 8765) {
       const file = normalize(join(ROOT, url.pathname.slice(7)));
       const allowed = ['store', 'landing'].some((dir) => file.startsWith(join(ROOT, dir)));
       if (allowed && existsSync(file)) return send(200, MIME[extname(file)] || 'application/octet-stream', readFileSync(file));
+    }
+    if (url.pathname.startsWith('/site/')) { // the built website (npm run site), as GitHub Pages serves it
+      const dist = join(ROOT, 'dist', 'site');
+      let file = normalize(join(dist, url.pathname.slice(6) || 'index.html'));
+      if (file === dist || file === dist + sep) file = join(dist, 'index.html');
+      if (file.startsWith(dist) && existsSync(file)) return send(200, MIME[extname(file)] || 'application/octet-stream', readFileSync(file));
     }
     send(404, 'text/plain', 'not found');
   });

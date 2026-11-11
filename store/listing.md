@@ -11,6 +11,10 @@ Usage Tracker for Ollama Cloud
 
 Unofficial usage tracker for Ollama Cloud: credits, models and activity at a glance. No telemetry. Not affiliated with Ollama.
 
+## Supported browsers
+
+Chrome, Edge and Brave 121+ (Chrome Web Store / Edge Add-ons); Firefox and Zen 140+ (Firefox Add-ons).
+
 ## Category
 
 Productivity (Chrome Web Store) / Developer Tools (Edge, Firefox)

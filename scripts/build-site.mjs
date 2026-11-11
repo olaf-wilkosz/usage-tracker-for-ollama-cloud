@@ -11,13 +11,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = join(ROOT, 'dist', 'site');
 
+const SLIDES = ['01-overview', '02-payg', '03-alerts', '04-models', '05-activity', '06-private'];
+
 const IMAGES = [
+  ...SLIDES.flatMap((name) => [
+    [`store/screenshots/${name}.png`, `img/${name}.png`],
+    [`store/screenshots/hi/${name}.png`, `img/hi/${name}.png`]
+  ]),
   ['store/promo/popup.png', 'img/popup.png'],
-  ['store/screenshots/02-payg.png', 'img/02-payg.png'],
-  ['store/screenshots/03-alerts.png', 'img/03-alerts.png'],
-  ['store/screenshots/04-models.png', 'img/04-models.png'],
-  ['store/screenshots/05-activity.png', 'img/05-activity.png'],
-  ['store/screenshots/06-private.png', 'img/06-private.png'],
   ['store/promo/og-1200x630.png', 'img/og.png'],
   ['extension/icons/icon128.png', 'img/icon128.png']
 ];
@@ -25,7 +26,7 @@ const IMAGES = [
 mkdirSync(OUT, { recursive: true });
 // Empty the folder rather than deleting it: a preview server or shell may be sitting in it
 for (const entry of readdirSync(OUT)) rmSync(join(OUT, entry), { recursive: true, force: true });
-mkdirSync(join(OUT, 'img'), { recursive: true });
+mkdirSync(join(OUT, 'img', 'hi'), { recursive: true });
 cpSync(join(ROOT, 'landing'), OUT, { recursive: true });
 
 for (const [from, to] of IMAGES) {

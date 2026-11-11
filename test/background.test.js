@@ -121,14 +121,29 @@ await test('before setup: refresh reports no_key and the toolbar nudges to conne
   assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false, status: 'no_key' });
 });
 
-await test('first install opens the welcome tab (and only then); it never opens a popup', async () => {
+await test('first install: the popup opens in a small window of its own, the options tab is only the fallback', async () => {
+  const created = [];
+  chrome.windows = { create: async (options) => { created.push(options); } };
+  await handlers.installed({ reason: 'install' });
+  assert.equal(created.length, 1);
+  assert.equal(created[0].type, 'popup');
+  assert.equal(created[0].url, 'popup.html');
+  assert.equal(openedOptions, 0, 'one setup surface, not two');
+
+  await handlers.installed({ reason: 'update' });
+  assert.equal(created.length, 1, 'updates and reloads do not');
+
+  chrome.windows = { create: async () => { throw new Error('windows API refused'); } };
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 1, 'falls back to the welcome tab');
+  delete chrome.windows;
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 2, 'also when the windows API is missing');
+
   let popups = 0;
   chrome.action.openPopup = async () => { popups++; };
   await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, 1);
-  await handlers.installed({ reason: 'update' });
-  assert.equal(openedOptions, 1, 'updates do not');
-  assert.equal(popups, 0, 'a popup opened without a click can end up as an undismissable window');
+  assert.equal(popups, 0, 'action.openPopup can end up as an undismissable window and is never used');
   delete chrome.action.openPopup;
 });
 
@@ -198,10 +213,14 @@ await test('the 30-day series is reused for 10 minutes, then fetched again', asy
   assert.ok(calls.slice(stale).some((c) => c.url.includes('range=30d')), 'refetched once the copy is older than 10 minutes');
 });
 
-await test('reinstalling with a working key does not open the welcome tab', async () => {
+await test('reinstalling with a working key opens no setup at all', async () => {
   const before = openedOptions;
+  let windows = 0;
+  chrome.windows = { create: async () => { windows++; } };
   await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, before, 'nothing to set up');
+  assert.equal(openedOptions, before);
+  assert.equal(windows, 0, 'nothing to set up');
+  delete chrome.windows;
 });
 
 await test('activity: hourly requests from the 24h reading, daily totals from the 30d reading', async () => {

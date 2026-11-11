@@ -570,6 +570,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * First-run setup: the popup in a small window of its own, which is the same screen the toolbar
+ * popup shows (paste the key, and it turns into the usage view). A regular window, so the user
+ * closes it like any other. action.openPopup() was tried first and dropped: opened without a
+ * click it can appear in a window that is not focused, never gets the blur that dismisses a
+ * popup, and stays on screen. The options page is the fallback.
+ */
+async function showSetupWindow() {
+  try {
+    await chrome.windows.create({ url: chrome.runtime.getURL('popup.html'), type: 'popup', width: 400, height: 690, focused: true });
+  } catch {
+    chrome.runtime.openOptionsPage();
+  }
+}
+
+/**
  * Initialize on install/update
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -588,13 +603,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Do initial fetch (shows the "!" setup badge until an API key is saved)
   await refreshUsage();
 
-  // First run: a welcome tab with the connect step, unless a working key is already stored
-  // (a reinstall keeps the extension's data, and there is nothing to set up then).
-  // action.openPopup() was tried instead and dropped: opened without a click it can appear in a
-  // window that is not focused, never gets the blur that dismisses a popup, and stays on screen.
+  // First run: show the setup, unless a working key is already stored (a reinstall keeps the
+  // extension's data, and there is nothing to set up then).
   if (details.reason === 'install') {
     const { [STORAGE_KEY]: usage } = await chrome.storage.local.get(STORAGE_KEY);
-    if (!usage || NEEDS_KEY_STATUSES.has(usage.status)) chrome.runtime.openOptionsPage();
+    if (!usage || NEEDS_KEY_STATUSES.has(usage.status)) await showSetupWindow();
   }
 });
 

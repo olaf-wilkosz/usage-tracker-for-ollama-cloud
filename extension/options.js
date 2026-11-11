@@ -5,7 +5,7 @@
 
 import {
   DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
-  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, testNotificationMessage, describeBuild, saveApiKey, removeApiKey
+  sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, testNotificationMessage, describeBuild, enhanceNumberInputs, saveApiKey, removeApiKey
 } from './settings.js';
 
 // DOM elements
@@ -109,6 +109,7 @@ async function showDoneNotice() {
  * Initialize options page
  */
 async function init() {
+  enhanceNumberInputs();
   elements.version.textContent = chrome.runtime.getManifest().version;
   elements.buildInfo.textContent = await describeBuild();
   await syncKeyState();

@@ -81,6 +81,46 @@ export async function describeBuild() {
   return `Version ${version} · source folder${ollamaInstalledAt ? ` · loaded ${new Date(ollamaInstalledAt).toLocaleString()}` : ''}`;
 }
 
+/**
+ * Give every number field "-" and "+" buttons of its own, the same in every browser (the native
+ * spin buttons are tiny in Chrome and very heavy in Firefox, and are hidden by the stylesheets).
+ * They are for pointer and touch users: the field itself keeps its keyboard behavior (type,
+ * Up / Down arrows, Page Up / Down), so the buttons are not extra Tab stops - the pattern the
+ * ARIA spinbutton guidance describes.
+ * @param {ParentNode} [root]
+ */
+export function enhanceNumberInputs(root = document) {
+  for (const input of root.querySelectorAll('input[type="number"]')) {
+    if (input.parentElement.classList.contains('stepper')) continue;
+
+    const name = input.getAttribute('aria-label') || input.labels?.[0]?.textContent.trim() || 'value';
+    const button = (symbol, direction) => {
+      const node = document.createElement('button');
+      node.type = 'button';
+      node.className = 'step-btn';
+      node.tabIndex = -1;
+      node.textContent = symbol;
+      node.setAttribute('aria-label', `${direction} ${name}`);
+      node.addEventListener('click', () => {
+        try {
+          if (direction === 'Decrease') input.stepDown();
+          else input.stepUp();
+        } catch {
+          return; // a value the field cannot step from: leave it to the user
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      return node;
+    };
+
+    const wrapper = document.createElement('span');
+    wrapper.className = 'stepper';
+    input.replaceWith(wrapper);
+    wrapper.append(button('\u2212', 'Decrease'), input, button('+', 'Increase'));
+  }
+}
+
 /** What to tell the user after "Send test" (shared by the popup and the options page). */
 export function testNotificationMessage(result) {
   return result.success
