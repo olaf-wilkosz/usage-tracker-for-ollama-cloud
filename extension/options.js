@@ -23,6 +23,8 @@ const elements = {
   pageSubtitle: document.getElementById('pageSubtitle'),
   doneNotice: document.getElementById('doneNotice'),
   pinTip: document.getElementById('pinTip'),
+  connectSection: document.getElementById('connectSection'),
+  openSettingsBtn: document.getElementById('openSettingsBtn'),
   refreshInterval: document.getElementById('refreshInterval'),
   notifyWarning: document.getElementById('notifyWarning'),
   notifyCritical: document.getElementById('notifyCritical'),
@@ -98,6 +100,20 @@ async function syncKeyState() {
   elements.pageSubtitle.textContent = connected ? 'Configure Usage Tracker for Ollama Cloud' : 'Connect your Ollama account to start tracking your usage';
 }
 
+let closeTimer = null;
+let welcomeVisit = false; // the page was opened before any key was connected (first run)
+
+/** Close this tab (the welcome tab has done its job). */
+async function closeThisTab() {
+  try {
+    const tab = await chrome.tabs.getCurrent();
+    if (tab?.id !== undefined) await chrome.tabs.remove(tab.id);
+    else window.close();
+  } catch {
+    window.close();
+  }
+}
+
 /** After a successful connect: say what happens next, and hint at pinning if the extension is not pinned. */
 async function showDoneNotice() {
   elements.pinTip.hidden = (await isPinnedToToolbar()) !== false;
@@ -110,6 +126,13 @@ async function showDoneNotice() {
  */
 async function init() {
   enhanceNumberInputs();
+  welcomeVisit = !(await isConnected());
+  elements.openSettingsBtn.addEventListener('click', async () => {
+    clearTimeout(closeTimer);
+    elements.doneNotice.hidden = true;
+    elements.connectSection.hidden = false;
+    await syncKeyState();
+  });
   elements.version.textContent = chrome.runtime.getManifest().version;
   elements.buildInfo.textContent = await describeBuild();
   await syncKeyState();
@@ -123,8 +146,15 @@ async function init() {
     if (result.success) {
       elements.apiKeyInput.value = ''; // the key is never shown again
       elements.keyStatus.hidden = true;
-      await syncKeyState();
-      await showDoneNotice();
+      if (welcomeVisit) {
+        // First run: nothing but the confirmation (no wall of settings), then the tab goes away
+        elements.connectSection.hidden = true;
+        await showDoneNotice();
+        closeTimer = setTimeout(closeThisTab, 3500);
+      } else {
+        await syncKeyState();
+        showInlineStatus(elements.keyStatus, 'Key saved. Usage is refreshing.', true, 5000);
+      }
     } else {
       showInlineStatus(elements.keyStatus, result.error, false, 8000);
       await syncKeyState();

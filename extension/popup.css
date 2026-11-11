@@ -905,24 +905,6 @@ footer {
   text-align: center;
 }
 
-/* The same screen in a window of its own (first-run setup): the window sets the size, not the content */
-body.in-window {
-  width: auto;
-  min-width: 360px;
-  height: 100vh;
-}
-
-body.in-window .container {
-  height: 100%;
-  min-height: 0;
-}
-
-body.in-window .scroll-view {
-  flex: 1 1 auto;
-  height: auto;
-  min-height: 0;
-}
-
 /* Text for assistive technology only (e.g. the heatmap summary) */
 .sr-only {
   position: absolute;

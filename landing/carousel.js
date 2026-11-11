@@ -1,6 +1,6 @@
 // Screenshot carousel and lightbox for the landing page. Plain scroll-snap does the sliding
-// (touch, trackpad and the scrollbar work without this script); the script adds the buttons, the
-// dots, arrow keys, a spoken "n of N" and the enlarged view. Nothing moves by itself.
+// (swiping, trackpad and the scrollbar work without this script); the script adds the side
+// arrows, the dots, arrow keys, a spoken "n of N" and the enlarged view. Nothing moves by itself.
 (() => {
   const carousel = document.querySelector('.carousel');
   if (!carousel) return;
@@ -14,9 +14,9 @@
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const indexNow = () => Math.round(track.scrollLeft / track.clientWidth);
-  const goTo = (index) => {
+  const goTo = (index, instant = false) => {
     const clamped = Math.max(0, Math.min(slides.length - 1, index));
-    track.scrollTo({ left: clamped * track.clientWidth, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+    track.scrollTo({ left: clamped * track.clientWidth, behavior: instant || reduceMotion.matches ? 'auto' : 'smooth' });
   };
 
   const dots = slides.map((slide, i) => {
@@ -43,7 +43,7 @@
   prev.addEventListener('click', () => goTo(indexNow() - 1));
   next.addEventListener('click', () => goTo(indexNow() + 1));
   track.addEventListener('scroll', () => window.requestAnimationFrame(sync), { passive: true });
-  window.addEventListener('resize', () => goTo(shown));
+  window.addEventListener('resize', () => goTo(shown, true));
   carousel.addEventListener('keydown', (event) => {
     if (event.target.closest('dialog')) return;
     if (event.key === 'ArrowLeft') { goTo(indexNow() - 1); event.preventDefault(); }
@@ -61,15 +61,25 @@
   let current = 0;
 
   const show = (index) => {
-    current = Math.max(0, Math.min(zooms.length - 1, index));
+    const target = Math.max(0, Math.min(zooms.length - 1, index));
+    const direction = Math.sign(target - current);
+    current = target;
     const button = zooms[current];
     image.src = button.dataset.full;
     image.alt = button.querySelector('img').alt;
     count.textContent = `${current + 1} / ${zooms.length}`;
     lbPrev.disabled = current === 0;
     lbNext.disabled = current === zooms.length - 1;
+
+    // a short slide-and-fade in the direction of travel (skipped for reduced motion)
+    image.classList.remove('from-left', 'from-right');
+    if (direction !== 0 && !reduceMotion.matches) {
+      void image.offsetWidth; // restart the animation
+      image.classList.add(direction > 0 ? 'from-right' : 'from-left');
+    }
+
     // the carousel underneath follows, so closing the view lands on the same screenshot
-    track.scrollTo({ left: current * track.clientWidth, behavior: 'auto' });
+    goTo(current, true);
     // warm up the neighbours so stepping through is instant
     for (const n of [current - 1, current + 1]) {
       if (zooms[n]) new Image().src = zooms[n].dataset.full;
@@ -78,6 +88,7 @@
 
   zooms.forEach((button, i) => {
     button.addEventListener('click', () => {
+      current = i;
       show(i);
       document.documentElement.classList.add('lb-open'); // the page behind stops scrolling
       dialog.showModal();
@@ -100,4 +111,16 @@
     image.removeAttribute('src');
     sync();
   });
+
+  // swipe left / right on the enlarged picture (the carousel itself swipes natively)
+  let swipeStart = null;
+  image.addEventListener('pointerdown', (event) => { swipeStart = { x: event.clientX, y: event.clientY }; });
+  image.addEventListener('pointerup', (event) => {
+    if (!swipeStart) return;
+    const dx = event.clientX - swipeStart.x;
+    const dy = event.clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) show(current + (dx < 0 ? 1 : -1));
+  });
+  image.addEventListener('pointercancel', () => { swipeStart = null; });
 })();

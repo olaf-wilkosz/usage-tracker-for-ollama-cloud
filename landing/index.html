@@ -62,9 +62,9 @@
         <h2 id="setup-h">Set up in a minute</h2>
         <p class="section-lead">The extension reads your usage with an API key from your own account.</p>
         <ol class="steps">
-          <li><strong>Install it</strong><span>Add the extension to your browser. A small setup window opens by itself on first install.</span></li>
+          <li><strong>Install it</strong><span>Add the extension to your browser. It opens its setup by itself on first install.</span></li>
           <li><strong>Create an API key</strong><span>On <a href="https://ollama.com/settings/keys">ollama.com/settings/keys</a>, create a key and copy it.</span></li>
-          <li><strong>Paste it in</strong><span>In the popup or on the setup page. The extension checks the key with Ollama, stores it encrypted and starts tracking.</span></li>
+          <li><strong>Paste it in</strong><span>Into the popup. The extension checks the key with Ollama, stores it encrypted and starts tracking.</span></li>
         </ol>
       </section>
 
@@ -72,7 +72,9 @@
         <h2 id="gallery-h">A closer look</h2>
         <p class="section-lead">Sample data shown; the numbers in your popup are your own. Click a screenshot to enlarge it.</p>
         <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Screenshots">
-          <div class="car-track">
+          <div class="car-stage">
+            <button class="car-btn car-side car-prev" type="button" aria-label="Previous screenshot"><span aria-hidden="true">&#8249;</span></button>
+            <div class="car-track">
           <figure class="car-slide" role="group" aria-roledescription="slide" aria-label="1 of 6">
             <button class="zoom" type="button" data-full="img/hi/01-overview.webp" aria-label="Enlarge screenshot 1: The extension popup for a plan with included credits: usage at 70 percent, purchased credits and a donut chart of requests by model">
               <img src="img/01-overview.webp" loading="lazy" decoding="async" width="1280" height="800" alt="The extension popup for a plan with included credits: usage at 70 percent, purchased credits and a donut chart of requests by model">
@@ -104,11 +106,9 @@
             </button>
           </figure>
           </div>
-          <div class="car-controls">
-            <button class="car-btn car-prev" type="button" aria-label="Previous screenshot"><span aria-hidden="true">&#8249;</span></button>
-            <div class="car-dots" role="group" aria-label="Choose a screenshot"></div>
-            <button class="car-btn car-next" type="button" aria-label="Next screenshot"><span aria-hidden="true">&#8250;</span></button>
+            <button class="car-btn car-side car-next" type="button" aria-label="Next screenshot"><span aria-hidden="true">&#8250;</span></button>
           </div>
+          <div class="car-dots" role="group" aria-label="Choose a screenshot"></div>
           <p class="car-status" role="status" aria-live="polite"></p>
         </div>
       </section>
@@ -153,14 +153,14 @@
     <div class="lb-frame">
       <div class="lb-bar">
         <p class="lb-count" aria-live="polite"></p>
-        <button class="lb-btn lb-prev" type="button" aria-label="Previous screenshot"><span aria-hidden="true">&#8249;</span></button>
-        <button class="lb-btn lb-next" type="button" aria-label="Next screenshot"><span aria-hidden="true">&#8250;</span></button>
         <button class="lb-btn lb-close" type="button" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
         </button>
       </div>
       <img alt="">
     </div>
+    <button class="lb-btn lb-side lb-prev" type="button" aria-label="Previous screenshot"><span aria-hidden="true">&#8249;</span></button>
+    <button class="lb-btn lb-side lb-next" type="button" aria-label="Next screenshot"><span aria-hidden="true">&#8250;</span></button>
   </dialog>
   <script src="carousel.js" defer></script>
 </body>

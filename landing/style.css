@@ -159,13 +159,18 @@ h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.
 .steps strong { display: block; font-size: 19px; margin-bottom: 6px; }
 .steps span { color: var(--text-2); font-size: 16px; }
 
-/* Screenshot carousel: scroll-snap does the sliding, carousel.js adds buttons, dots and the lightbox */
+/* Screenshot carousel: scroll-snap does the sliding and the swiping, carousel.js adds the arrows,
+   dots and the enlarged view. The picture is as wide as the content; on wide screens the arrows
+   sit in the free margin beside it, on narrower ones they float over its edges. */
 .carousel { margin: 0 auto; }
+
+.car-stage { position: relative; }
 
 .car-track {
   display: flex;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 .car-track::-webkit-scrollbar { display: none; }
@@ -181,26 +186,27 @@ h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.
   background: var(--bg-2);
   overflow: hidden;
   cursor: zoom-in;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.zoom:hover { border-color: #55565c; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
 .zoom img { display: block; width: 100%; height: auto; }
 
-.car-controls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 18px; }
-
 .car-btn {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--text);
-  font-size: 26px;
+  font-size: 28px;
   line-height: 1;
   cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
 }
-.car-btn:hover:not(:disabled) { background: #2d2e33; }
-.car-btn:disabled { opacity: 0.45; cursor: default; }
+.car-btn:hover:not(:disabled) { background: #2d2e33; transform: scale(1.06); }
+.car-btn:disabled { opacity: 0.35; cursor: default; }
 
-.car-dots { display: flex; gap: 2px; }
+.car-dots { display: flex; justify-content: center; gap: 2px; margin-top: 16px; }
 .car-dot {
   width: 28px;
   height: 28px;
@@ -217,12 +223,24 @@ h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.
   border: 2px solid var(--text-2);
   border-radius: 50%;
   box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 .car-dot[aria-current='true']::before { background: var(--green); border-color: var(--green); }
 
 .car-status { margin: 8px 0 0; text-align: center; font-size: 14px; color: var(--text-2); }
 
-/* Enlarged screenshot: fills the window, never scrolls, keeps a margin around the picture */
+.car-side { position: absolute; top: 50%; z-index: 1; margin-top: -24px; background: rgba(20, 21, 24, 0.78); }
+.car-prev { left: 8px; }
+.car-next { right: 8px; }
+
+@media (min-width: 1200px) {
+  .car-side { background: var(--card); }
+  .car-prev { left: -68px; }
+  .car-next { right: -68px; }
+}
+
+/* Enlarged screenshot: fills the window, never scrolls, keeps a margin around the picture; the
+   arrows sit at the sides of the picture and a swipe changes it too */
 html.lb-open { overflow: hidden; }
 
 dialog#lightbox {
@@ -238,13 +256,22 @@ dialog#lightbox {
   color: var(--text);
   overflow: hidden;
   overscroll-behavior: contain;
+  opacity: 0;
+  transition: opacity 0.22s ease, overlay 0.22s allow-discrete, display 0.22s allow-discrete;
 }
-dialog#lightbox[open] { display: grid; place-items: center; }
-dialog#lightbox::backdrop { background: rgba(0, 0, 0, 0.9); }
+dialog#lightbox[open] { display: grid; place-items: center; opacity: 1; }
+@starting-style { dialog#lightbox[open] { opacity: 0; } }
+
+dialog#lightbox::backdrop {
+  background: rgba(0, 0, 0, 0);
+  transition: background-color 0.22s ease, overlay 0.22s allow-discrete, display 0.22s allow-discrete;
+}
+dialog#lightbox[open]::backdrop { background: rgba(0, 0, 0, 0.9); }
+@starting-style { dialog#lightbox[open]::backdrop { background: rgba(0, 0, 0, 0); } }
 
 .lb-frame { display: flex; flex-direction: column; gap: 12px; padding: 20px; box-sizing: border-box; }
-.lb-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.lb-count { margin: 0 auto 0 2px; font-size: 14px; color: var(--text-2); }
+.lb-bar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.lb-count { margin: 0 0 0 2px; font-size: 14px; color: var(--text-2); }
 .lb-btn {
   display: grid;
   place-items: center;
@@ -258,18 +285,76 @@ dialog#lightbox::backdrop { background: rgba(0, 0, 0, 0.9); }
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 .lb-btn:hover:not(:disabled) { background: #2d2e33; }
-.lb-btn:disabled { opacity: 0.4; cursor: default; }
+.lb-btn:disabled { opacity: 0.35; cursor: default; }
+.lb-side { position: fixed; top: 50%; margin-top: -22px; background: rgba(35, 36, 40, 0.85); }
+.lb-prev { left: 14px; }
+.lb-next { right: 14px; }
+
 dialog#lightbox img {
   display: block;
-  max-width: calc(100vw - 40px);
+  max-width: calc(100vw - 40px - 2 * (14px + 44px));
   max-height: calc(100vh - 40px - 44px - 12px);
   max-height: calc(100dvh - 40px - 44px - 12px);
   width: auto;
   height: auto;
   border-radius: var(--radius);
+  touch-action: pan-y pinch-zoom;
+  -webkit-user-select: none;
+  user-select: none;
 }
+dialog#lightbox img.from-right { animation: lb-in-right 0.26s ease; }
+dialog#lightbox img.from-left { animation: lb-in-left 0.26s ease; }
+@keyframes lb-in-right { from { opacity: 0.25; transform: translateX(28px); } }
+@keyframes lb-in-left { from { opacity: 0.25; transform: translateX(-28px); } }
+
+@media (max-width: 899px) {
+  dialog#lightbox img { max-width: calc(100vw - 40px); }
+}
+
+.privacy { display: grid; gap: 40px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+.checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.checks li { padding-left: 32px; position: relative; }
+.checks li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+
+/* FAQ accordion: panels open independently (users compare answers) and animate where the
+   browser supports ::details-content; elsewhere they simply open. */
+:root { interpolate-size: allow-keywords; }
+
+details { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 22px; margin-bottom: 12px; }
+details::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size 0.28s ease, content-visibility 0.28s allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 16px 0;
+  font-size: 18px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after {
+  content: '';
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--text-2);
+  border-bottom: 2px solid var(--text-2);
+  transform: rotate(45deg);
+  transition: transform 0.28s ease;
+}
+details[open] > summary::after { transform: rotate(-135deg); }
+details p { margin: 0 0 18px; color: var(--text-2); }
 
 /* Footer */
 footer.site { margin-top: 96px; border-top: 1px solid var(--border); padding: 36px 0 56px; color: var(--text-2); font-size: 15px; }
@@ -298,5 +383,8 @@ footer.site p { margin: 0; max-width: 40em; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   details::details-content, summary::after { transition: none; }
+  .car-track { scroll-behavior: auto; }
+  dialog#lightbox, dialog#lightbox::backdrop, .zoom, .car-btn, .lb-btn { transition: none; }
+  dialog#lightbox img.from-right, dialog#lightbox img.from-left { animation: none; }
   .car-track { scroll-behavior: auto; }
 }

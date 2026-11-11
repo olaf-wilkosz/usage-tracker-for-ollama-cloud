@@ -3,12 +3,14 @@
 //   node scripts/build.mjs            -> dist/chrome, dist/firefox and both zips
 //   node scripts/build.mjs chrome     -> only the Chrome / Edge / Brave package
 //   node scripts/build.mjs firefox    -> only the Firefox package
+//   node scripts/build.mjs firefox --watch   -> dist/firefox kept up to date while you edit
+//                                               extension/ (no zip); reload the add-on after a change
 //
-// The source manifest carries both browsers' settings, so for development either browser can
-// load extension/ directly. The packages are the same files with the manifest trimmed to
-// what that browser understands (Chrome: service worker; Firefox: event page + add-on id).
+// extension/ is the Chrome / Edge / Brave extension and loads there directly. Firefox (and Zen)
+// need an event page instead of a service worker plus an add-on id, so they load dist/firefox:
+// the same files with a different manifest.json.
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { zipSync } from 'fflate';
@@ -17,25 +19,30 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SRC = join(ROOT, 'extension');
 const DIST = join(ROOT, 'dist');
 
+const GECKO_ID = 'usage-tracker-for-ollama-cloud@olaf-wilkosz.github.io';
+const FIREFOX_MIN_VERSION = '140.0'; // first release that understands data_collection_permissions
 
 const manifest = JSON.parse(readFileSync(join(SRC, 'manifest.json'), 'utf8'));
 const slug = 'usage-tracker-for-ollama-cloud';
+const GENERATED = new Set(['manifest.json', 'build-info.js']);
 
-/**
- * Per-browser manifest. The source manifest works in both families as it is (Chrome 121+ takes
- * service_worker and ignores scripts, Firefox takes scripts and ignores service_worker, each
- * ignores the other's settings), which is what lets either browser load extension/ directly.
- * The packages drop what the other browser would only warn about.
- */
+/** Per-browser manifest. */
 function manifestFor(target) {
-  if (target === 'chrome') {
-    const { browser_specific_settings: _gecko, ...rest } = manifest;
-    const { scripts: _scripts, ...background } = manifest.background;
-    return { ...rest, background };
-  }
+  if (target === 'chrome') return manifest;
 
   const { minimum_chrome_version: _chromeOnly, ...rest } = manifest;
-  return { ...rest, background: { scripts: manifest.background.scripts, type: 'module' } };
+  return {
+    ...rest,
+    background: { scripts: [manifest.background.service_worker], type: 'module' },
+    browser_specific_settings: {
+      gecko: {
+        id: GECKO_ID,
+        strict_min_version: FIREFOX_MIN_VERSION,
+        // The API key is sent to ollama.com (the service the extension exists for), nowhere else
+        data_collection_permissions: { required: ['authenticationInfo'] }
+      }
+    }
+  };
 }
 
 /** Commit and time of this build; "+local" marks uncommitted changes. */
@@ -53,13 +60,25 @@ function listFiles(dir) {
   });
 }
 
-function build(target) {
+/**
+ * Bring dist/<target> in line with extension/ in place: the folder itself is never deleted
+ * (a browser may have it loaded as a temporary add-on, and Windows would refuse).
+ */
+function syncFolder(target) {
   const out = join(DIST, target);
-  rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
-  cpSync(SRC, out, { recursive: true });
+  cpSync(SRC, out, { recursive: true, force: true });
+  for (const file of listFiles(out)) {
+    const name = relative(out, file).replaceAll('\\', '/');
+    if (!GENERATED.has(name) && !existsSync(join(SRC, name))) rmSync(file, { force: true });
+  }
   writeFileSync(join(out, 'build-info.js'), `export const BUILD = ${JSON.stringify(buildInfo())};\n`);
   writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifestFor(target), null, 2)}\n`);
+  return out;
+}
+
+function build(target) {
+  const out = syncFolder(target);
 
   // Zip with the manifest at the archive root, files in a stable order
   const files = Object.fromEntries(
@@ -75,9 +94,26 @@ function build(target) {
   console.log(`${target}: ${relative(ROOT, zipPath)} (${Object.keys(files).length} files, ${(statSync(zipPath).size / 1024).toFixed(1)} KB)`);
 }
 
-const wanted = process.argv[2];
-const targets = wanted ? [wanted] : ['chrome', 'firefox'];
-for (const target of targets) {
-  if (!['chrome', 'firefox'].includes(target)) throw new Error(`Unknown target "${target}" (chrome | firefox)`);
-  build(target);
+const args = process.argv.slice(2);
+const wanted = args.find((arg) => !arg.startsWith('--'));
+
+if (args.includes('--watch')) {
+  const target = wanted ?? 'firefox';
+  syncFolder(target);
+  console.log(`dist/${target} is in sync with extension/ and stays so while you edit.`);
+  console.log(`Load dist/${target}/manifest.json once (Firefox / Zen: about:debugging > This Firefox > Load Temporary Add-on), then press Reload there after a change. Ctrl+C stops.`);
+  let timer = null;
+  watch(SRC, { recursive: true }, () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      syncFolder(target);
+      console.log(`${new Date().toLocaleTimeString()}  dist/${target} updated - reload the add-on`);
+    }, 250);
+  });
+} else {
+  const targets = wanted ? [wanted] : ['chrome', 'firefox'];
+  for (const target of targets) {
+    if (!['chrome', 'firefox'].includes(target)) throw new Error(`Unknown target "${target}" (chrome | firefox)`);
+    build(target);
+  }
 }

@@ -109,7 +109,7 @@ async function openPage(path) {
 }
 
 await sleep(3000); // the worker polls up to ~1.5 s for the popup before it falls back to the welcome tab
-console.log("pages the browser opened on install:", JSON.stringify((await targets()).filter((t) => /(popup|options)\.html(\?|$)/.test(t.url)).map((t) => t.url.split("/").pop())));
+console.log("pages the browser opened on install:", JSON.stringify((await targets()).filter((t) => /(popup|options)\.html$/.test(t.url)).map((t) => t.url.split("/").pop())));
 // What the browser itself says about the manifest (its own extensions page): install warnings
 const manager = await openPage("chrome://extensions");
 console.log("manifest warnings / errors:", await manager.evaluate(`chrome.developerPrivate.getExtensionsInfo({ includeDisabled: true, includeTerminated: true }).then((all) => {
@@ -134,13 +134,9 @@ console.log("connect with a bogus key:", await options.evaluate(`(async () => {
   const st = document.getElementById("keyStatus");
   return JSON.stringify({ status: st.textContent, hidden: st.hidden, stored: (await chrome.storage.local.get("ollamaApiKey")).ollamaApiKey ?? null });
 })()`));
-// "Send test" notification: what the worker answers, and what the page tells the user
-console.log("notifications: permission level", await options.evaluate("chrome.notifications.getPermissionLevel()"), "| test button:", await options.evaluate(`(async () => {
-  document.getElementById("testNotifyBtn").click();
-  await new Promise((r) => setTimeout(r, 1500));
-  const st = document.getElementById("testNotifyStatus");
-  return JSON.stringify({ text: st.textContent.slice(0, 90), hidden: st.hidden, cls: st.className });
-})()`));
+// Notifications: only the permission level. Actually sending one (the "Send test" button) would land
+// a real toast in the notification center of whoever runs this - the test run must stay silent.
+console.log("notifications: permission level", await options.evaluate("chrome.notifications.getPermissionLevel()"));
 options.close();
 
 const popup = await openPage("popup.html");

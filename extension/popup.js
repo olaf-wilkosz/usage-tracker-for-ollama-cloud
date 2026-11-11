@@ -766,8 +766,6 @@ function closeSettingsView() {
  * Initialize popup
  */
 async function init() {
-  // Opened in a window of its own (first run) instead of from the toolbar: fill that window
-  if (new URLSearchParams(location.search).has('window')) document.body.classList.add('in-window');
   enhanceNumberInputs();
   // Load initial data
   const [data, settings, stored] = await Promise.all([

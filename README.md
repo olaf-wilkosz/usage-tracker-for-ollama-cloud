@@ -41,12 +41,12 @@ Works in Chrome, Edge and Brave (121+) and Firefox or Zen (140+). The Chrome Web
 
 1. Download `usage-tracker-for-ollama-cloud-<version>-chrome.zip` from the [latest release](https://github.com/olaf-wilkosz/usage-tracker-for-ollama-cloud/releases/latest) and unzip it (or clone this repo and use the `extension/` folder).
 2. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the unzipped folder.
-3. A small setup window opens by itself on first install (or click the extension icon). Create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys), paste it in and click **Connect**; the window turns into your usage view. The toolbar popup closes when you switch tabs, so after copying the key just reopen it.
+3. On first install the extension opens its setup by itself (otherwise click the extension icon). Create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys), paste it in and click **Connect**. The toolbar popup closes when you switch tabs, so after copying the key just reopen it.
 4. Pin the extension to the toolbar (extensions menu, then the pin) to keep the live badge in view; the popup reminds you until you do.
 
 That is the whole setup.
 
-**Firefox / Zen:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `extension/manifest.json` (the same folder, no build needed; Firefox 140+). A temporary add-on is gone after the browser restarts until the AMO listing is live. If requests fail, check that the extension is allowed to access `ollama.com` under `about:addons` > the extension > Permissions.
+**Firefox / Zen:** the folder for them is `dist/firefox` (the same files with a Firefox manifest). Run `npm run build` once, open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `dist/firefox/manifest.json` (Firefox 140+). While developing, `npm run dev:firefox` keeps that folder in sync with `extension/`; press **Reload** on the add-on after a change. A temporary add-on is gone after the browser restarts until the AMO listing is live. If requests fail, check that the extension is allowed to access `ollama.com` under `about:addons` > the extension > Permissions.
 
 ## How it works
 
@@ -90,6 +90,7 @@ npm ci
 npm test            # unit + integration tests
 npm run check       # release checks: versions, store limits, permissions, forbidden patterns
 npm run build       # dist/chrome, dist/firefox and both zips
+npm run dev:firefox # keep dist/firefox in sync with extension/ while you edit (for Firefox / Zen)
 npm run preview     # popup and options page with sample data at http://localhost:8765/popup?scenario=busy
 npm run render      # re-render store screenshots and promo tiles
 npm run probe       # print what the API reports for YOUR account (needs OLLAMA_API_KEY) and check it for consistency

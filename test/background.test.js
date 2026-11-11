@@ -121,30 +121,33 @@ await test('before setup: refresh reports no_key and the toolbar nudges to conne
   assert.deepEqual(await send({ type: 'GET_KEY_STATE' }), { hasKey: false, status: 'no_key' });
 });
 
-await test('first install: the popup opens in a small window of its own, the options tab is only the fallback', async () => {
-  const created = [];
-  chrome.windows = { create: async (options) => { created.push(options); } };
+await test('first install: the toolbar popup when a window has focus, else the welcome tab; never a stray window', async () => {
+  const opened = [];
+  chrome.windows = { getLastFocused: async () => ({ id: 7, focused: true }) };
+  chrome.action.openPopup = async (options) => { opened.push(options); };
   await handlers.installed({ reason: 'install' });
-  assert.equal(created.length, 1);
-  assert.equal(created[0].type, 'popup');
-  assert.equal(created[0].url, 'popup.html?window=1', 'the popup, told that it fills a window');
+  assert.deepEqual(opened, [{ windowId: 7 }], 'the popup in the focused window');
   assert.equal(openedOptions, 0, 'one setup surface, not two');
 
   await handlers.installed({ reason: 'update' });
-  assert.equal(created.length, 1, 'updates and reloads do not');
+  assert.equal(opened.length, 1, 'updates and reloads do not');
 
-  chrome.windows = { create: async () => { throw new Error('windows API refused'); } };
+  // no focused browser window: a popup opened now would never get the blur that closes it
+  chrome.windows = { getLastFocused: async () => ({ id: 7, focused: false }) };
   await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, 1, 'falls back to the welcome tab');
+  assert.equal(opened.length, 1);
+  assert.equal(openedOptions, 1, 'welcome tab instead');
+
+  // the browser refuses (Firefox without a click)
+  chrome.windows = { getLastFocused: async () => ({ id: 7, focused: true }) };
+  chrome.action.openPopup = async () => { throw new Error('openPopup may only be called from a user action'); };
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 2);
+
+  delete chrome.action.openPopup; // an older browser without the API
+  await handlers.installed({ reason: 'install' });
+  assert.equal(openedOptions, 3);
   delete chrome.windows;
-  await handlers.installed({ reason: 'install' });
-  assert.equal(openedOptions, 2, 'also when the windows API is missing');
-
-  let popups = 0;
-  chrome.action.openPopup = async () => { popups++; };
-  await handlers.installed({ reason: 'install' });
-  assert.equal(popups, 0, 'action.openPopup can end up as an undismissable window and is never used');
-  delete chrome.action.openPopup;
 });
 
 await test('saving a key: format check, rejected key, then accepted and sealed', async () => {
@@ -215,12 +218,14 @@ await test('the 30-day series is reused for 10 minutes, then fetched again', asy
 
 await test('reinstalling with a working key opens no setup at all', async () => {
   const before = openedOptions;
-  let windows = 0;
-  chrome.windows = { create: async () => { windows++; } };
+  let popups = 0;
+  chrome.windows = { getLastFocused: async () => ({ id: 1, focused: true }) };
+  chrome.action.openPopup = async () => { popups++; };
   await handlers.installed({ reason: 'install' });
   assert.equal(openedOptions, before);
-  assert.equal(windows, 0, 'nothing to set up');
+  assert.equal(popups, 0, 'nothing to set up');
   delete chrome.windows;
+  delete chrome.action.openPopup;
 });
 
 await test('activity: hourly requests from the 24h reading, daily totals from the 30d reading', async () => {

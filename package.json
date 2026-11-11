@@ -14,7 +14,8 @@
     "render": "node scripts/render-store.mjs",
     "site": "node scripts/build-site.mjs",
     "probe": "node scripts/api-probe.mjs",
-    "a11y": "node scripts/a11y.mjs"
+    "a11y": "node scripts/a11y.mjs",
+    "dev:firefox": "node scripts/build.mjs firefox --watch"
   },
   "devDependencies": {
     "axe-core": "^4.14.0",

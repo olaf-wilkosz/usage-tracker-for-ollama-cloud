@@ -61,6 +61,20 @@ for (const page of readdirSync(EXT).filter((f) => f.endsWith('.html'))) {
   }
 }
 
+// classes that exist only so landing/carousel.js can find an element
+const HOOK_CLASSES = new Set(['car-prev', 'car-next', 'lb-prev', 'lb-next', 'lb-close']);
+
+// the website: every class its pages use must have a rule (a stylesheet edit once removed whole
+// sections' styles without any test noticing)
+{
+  const css = read(join(ROOT, 'landing', 'style.css'));
+  for (const page of readdirSync(join(ROOT, 'landing')).filter((f) => f.endsWith('.html'))) {
+    const html = read(join(ROOT, 'landing', page));
+    const used = new Set([...html.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)));
+    for (const name of used) check(HOOK_CLASSES.has(name) || css.includes(`.${name}`), `landing/${page} uses class "${name}" but landing/style.css has no rule for it`);
+  }
+}
+
 // code patterns the stores reject, and things this extension promises never to do
 function listFiles(dir) {
   return readdirSync(dir).flatMap((name) => {

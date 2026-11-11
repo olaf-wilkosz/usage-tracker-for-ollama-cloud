@@ -570,18 +570,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * First-run setup: the popup in a small window of its own, which is the same screen the toolbar
- * popup shows (paste the key, and it turns into the usage view). A regular window, so the user
- * closes it like any other. action.openPopup() was tried first and dropped: opened without a
- * click it can appear in a window that is not focused, never gets the blur that dismisses a
- * popup, and stays on screen. The options page is the fallback.
+ * First-run setup: the toolbar popup itself, which opens on the "paste your key" screen. That is
+ * only done while a browser window has focus: a popup opened in an unfocused window never gets
+ * the blur that closes it and stays on screen (seen with action.openPopup() in Brave). When the
+ * browser cannot open it (Firefox needs a click) or nothing is focused, the options page opens as
+ * a welcome tab, which closes itself once the key is connected.
  */
-async function showSetupWindow() {
+async function showSetup() {
   try {
-    await chrome.windows.create({ url: chrome.runtime.getURL('popup.html?window=1'), type: 'popup', width: 400, height: 690, focused: true });
+    if (chrome.action.openPopup) {
+      const focused = await chrome.windows.getLastFocused();
+      if (focused?.focused) {
+        await chrome.action.openPopup({ windowId: focused.id });
+        return;
+      }
+    }
   } catch {
-    chrome.runtime.openOptionsPage();
+    // not allowed here: use the welcome tab
   }
+  chrome.runtime.openOptionsPage();
 }
 
 /**
@@ -607,7 +614,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // extension's data, and there is nothing to set up then).
   if (details.reason === 'install') {
     const { [STORAGE_KEY]: usage } = await chrome.storage.local.get(STORAGE_KEY);
-    if (!usage || NEEDS_KEY_STATUSES.has(usage.status)) await showSetupWindow();
+    if (!usage || NEEDS_KEY_STATUSES.has(usage.status)) await showSetup();
   }
 });
 
