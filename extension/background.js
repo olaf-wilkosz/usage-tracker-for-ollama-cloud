@@ -12,6 +12,7 @@ import { apiGet, fetchApiData, buildUsage, extractActivity, statusForError } fro
 import { sealSecret, openSecret, destroySealingKey } from './secret-store.js';
 import { DEFAULT_SETTINGS, migrateSettings } from './settings.js';
 import { mergeActivity } from './activity.js';
+import { readLocal } from './storage.js';
 
 const STORAGE_KEY = 'ollamaUsageData';
 const DIAGNOSTICS_KEY = 'ollamaDiagnostics'; // last raw API responses, for "Copy diagnostics"
@@ -46,7 +47,7 @@ let keyEpoch = 0; // bumped whenever the API key is saved or removed; a refresh 
  * Get current settings from storage
  */
 async function getSettings() {
-  const result = await chrome.storage.local.get('settings');
+  const result = await readLocal('settings');
   return migrateSettings(result.settings);
 }
 
@@ -58,7 +59,7 @@ async function saveSettings(settings) {
 }
 
 async function loadApiKey() {
-  const stored = await chrome.storage.local.get(API_KEY_KEY);
+  const stored = await readLocal(API_KEY_KEY);
   return openSecret(stored[API_KEY_KEY]);
 }
 
@@ -70,7 +71,7 @@ async function collectUsage() {
   const key = await loadApiKey();
   if (!key) return { data: emptyUsage('no_key') };
 
-  const stored = await chrome.storage.local.get([BACKOFF_KEY, MONTH_CACHE_KEY]);
+  const stored = await readLocal([BACKOFF_KEY, MONTH_CACHE_KEY]);
   const now = Date.now();
   if (stored[BACKOFF_KEY] > now) {
     // Ollama asked us to wait (429 Retry-After): no request until then
@@ -229,7 +230,7 @@ async function updateBadge(data, settings = DEFAULT_SETTINGS, creditsInfo = null
  * (again only if it later escalates from warning to critical or the window resets).
  */
 async function checkThresholdNotifications(data, settings) {
-  const stored = (await chrome.storage.local.get(NOTIFIED_KEY))[NOTIFIED_KEY] || {};
+  const stored = (await readLocal(NOTIFIED_KEY))[NOTIFIED_KEY] || {};
   const notified = {}; // rebuilt every run: windows back under the threshold get alerts again later
 
   if (settings.notifyEnabled) {
@@ -273,7 +274,7 @@ async function checkThresholdNotifications(data, settings) {
 async function trackCredits(data, settings) {
   const meters = data.meters || [];
   if (!data.credits || !creditsInUse(meters)) return null;
-  const stored = (await chrome.storage.local.get(CREDITS_STATE_KEY))[CREDITS_STATE_KEY];
+  const stored = (await readLocal(CREDITS_STATE_KEY))[CREDITS_STATE_KEY];
   const { amount, runwayDays } = data.credits;
   const low = settings.lowCreditsDays;
   const hadCredits = Boolean(stored?.hadCredits) || amount > 0;
@@ -359,7 +360,7 @@ const PERSISTENT_ERROR_MESSAGES = {
  * Check for persistent errors and notify user
  */
 async function checkPersistentErrors(data, settings) {
-  const stored = await chrome.storage.local.get(ERROR_COUNT_KEY);
+  const stored = await readLocal(ERROR_COUNT_KEY);
   let errors = stored[ERROR_COUNT_KEY] || 0;
 
   if (data.status === 'no_key') {
@@ -407,7 +408,7 @@ async function doRefresh() {
   let { data } = collected;
   const { raw } = collected;
 
-  const previous = (await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY];
+  const previous = (await readLocal(STORAGE_KEY))[STORAGE_KEY];
   if (TRANSIENT_STATUSES.has(data.status) && previous?.meters) {
     // A hiccup (offline, rate limit, odd response): keep the last good numbers on screen
     data = { ...previous, status: data.status, stale: true };
@@ -422,7 +423,7 @@ async function doRefresh() {
   await updateBadge(data, settings, creditsInfo);
 
   if (data.status === 'ok') {
-    const stored = (await chrome.storage.local.get(ACTIVITY_KEY))[ACTIVITY_KEY];
+    const stored = (await readLocal(ACTIVITY_KEY))[ACTIVITY_KEY];
     await chrome.storage.local.set({ [ACTIVITY_KEY]: mergeActivity(stored, extractActivity(raw)) });
     await checkThresholdNotifications(data, settings);
     await notifyCredits(data, settings, creditsInfo);
@@ -500,7 +501,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender?.id && sender.id !== chrome.runtime.id) return false;
 
   if (message.type === 'GET_USAGE_DATA') {
-    chrome.storage.local.get(STORAGE_KEY).then(result => {
+    readLocal(STORAGE_KEY).then(result => {
       sendResponse({ data: result[STORAGE_KEY] || null });
     });
     return true; // Async response
@@ -533,7 +534,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'GET_KEY_STATE') {
-    chrome.storage.local.get([API_KEY_KEY, STORAGE_KEY]).then((stored) => {
+    readLocal([API_KEY_KEY, STORAGE_KEY]).then((stored) => {
       // status lets the pages tell "a key is stored" from "a key that works"
       sendResponse({ hasKey: Boolean(stored[API_KEY_KEY]), status: stored[STORAGE_KEY]?.status ?? null });
     });
@@ -586,7 +587,7 @@ async function showSetup() {
   try {
     // getBrowserInfo exists only in Firefox, where the popup cannot be opened without a click (and
     // may resolve without showing anything, leaving no setup at all): go straight to the welcome tab
-    const isFirefox = typeof chrome.runtime.getBrowserInfo === 'function';
+    const isFirefox = typeof (/** @type {any} */ (chrome.runtime)).getBrowserInfo === 'function';
     if (chrome.action.openPopup && !isFirefox) {
       const focused = await chrome.windows.getLastFocused();
       if (focused?.focused) {
@@ -610,7 +611,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await chrome.storage.local.set({ ollamaInstalledAt: new Date().toISOString() });
 
   // Set default settings, and migrate v1.0 threshold keys on update
-  const existing = await chrome.storage.local.get('settings');
+  const existing = await readLocal('settings');
   await saveSettings(existing.settings || DEFAULT_SETTINGS);
 
   // Initialize alarm
@@ -622,7 +623,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // First run: show the setup, unless a working key is already stored (a reinstall keeps the
   // extension's data, and there is nothing to set up then).
   if (details.reason === 'install') {
-    const { [STORAGE_KEY]: usage } = await chrome.storage.local.get(STORAGE_KEY);
+    const { [STORAGE_KEY]: usage } = await readLocal(STORAGE_KEY);
     if (!usage || NEEDS_KEY_STATUSES.has(usage.status)) await showSetup();
   }
 });

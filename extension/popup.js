@@ -14,6 +14,8 @@ import {
 } from './settings.js';
 import { buildLegendItems, summarizeActivity, formatDay, formatDayRange, rangeEntry } from './popup-logic.js';
 import { modelColor } from './model-colors.js';
+import { control } from './dom.js';
+import { readLocal } from './storage.js';
 import { getPeakStatus } from './peak-hours.js';
 import { buildWeekGrid, buildMonthGrid, heatLevel } from './activity.js';
 
@@ -33,14 +35,14 @@ const elements = {
   statusContainer: document.getElementById('statusContainer'),
   connectBlock: document.getElementById('connectBlock'),
   connectText: document.getElementById('connectText'),
-  connectBtn: document.getElementById('connectBtn'),
-  apiKeyInput: document.getElementById('apiKeyInput'),
+  connectBtn: control('connectBtn'),
+  apiKeyInput: control('apiKeyInput'),
   connectStatus: document.getElementById('connectStatus'),
   pinHint: document.getElementById('pinHint'),
   pinHintClose: document.getElementById('pinHintClose'),
   accountState: document.getElementById('accountState'),
-  newKeyInput: document.getElementById('newKeyInput'),
-  replaceKeyBtn: document.getElementById('replaceKeyBtn'),
+  newKeyInput: control('newKeyInput'),
+  replaceKeyBtn: control('replaceKeyBtn'),
   removeKeyBtn: document.getElementById('removeKeyBtn'),
   accountStatus: document.getElementById('accountStatus'),
   recentHoursHeading: document.getElementById('recentHoursHeading'),
@@ -68,29 +70,30 @@ const elements = {
   activityWeekBtn: document.getElementById('activityWeekBtn'),
   activityMonthBtn: document.getElementById('activityMonthBtn'),
   lastUpdated: document.getElementById('lastUpdated'),
-  refreshBtn: document.getElementById('refreshBtn'),
+  refreshBtn: control('refreshBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
   activityBlock: document.getElementById('activityBlock'),
   mainView: document.getElementById('mainView'),
   settingsView: document.getElementById('settingsView'),
-  refreshInterval: document.getElementById('refreshInterval'),
-  notifyWarning: document.getElementById('notifyWarning'),
-  notifyCritical: document.getElementById('notifyCritical'),
-  lowCreditsDays: document.getElementById('lowCreditsDays'),
+  refreshInterval: control('refreshInterval'),
+  notifyWarning: control('notifyWarning'),
+  notifyCritical: control('notifyCritical'),
+  lowCreditsDays: control('lowCreditsDays'),
   buildInfo: document.getElementById('buildInfo'),
-  notifyEnabled: document.getElementById('notifyEnabled'),
-  showPeakBanner: document.getElementById('showPeakBanner'),
+  notifyEnabled: control('notifyEnabled'),
+  showPeakBanner: control('showPeakBanner'),
   testNotifyBtn: document.getElementById('testNotifyBtn'),
   testNotifyStatus: document.getElementById('testNotifyStatus'),
   diagnosticsBtn: document.getElementById('diagnosticsBtn'),
   diagnosticsStatus: document.getElementById('diagnosticsStatus'),
-  clearDataBtn: document.getElementById('clearDataBtn'),
+  clearDataBtn: control('clearDataBtn'),
   clearStatus: document.getElementById('clearStatus'),
-  saveBtn: document.getElementById('saveBtn')
+  saveBtn: control('saveBtn')
 };
 
 let currentSettings = { ...DEFAULT_SETTINGS };
 let activityData = null;
+/** @type {'week'|'month'} */
 let activityMode = 'week';
 let modelsRange = 'month'; // default matches what ollama.com's own usage page shows: the calendar month so far
 let lastUsage = null;
@@ -521,7 +524,7 @@ function formatLastUpdated(isoString) {
   try {
     const date = new Date(isoString);
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = now.getTime() - date.getTime();
 
     if (diffMs < 60000) return 'Just now';
     if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m ago`;
@@ -570,7 +573,7 @@ async function submitKey() {
 /** The live badge is only visible when the extension is pinned; hint at it once, if it is not. */
 async function checkPinHint() {
   try {
-    const { ollamaPinHintDismissed } = await chrome.storage.local.get('ollamaPinHintDismissed');
+    const { ollamaPinHintDismissed } = await readLocal('ollamaPinHintDismissed');
     // null = the browser cannot tell: no hint
     pinHintWanted = (await isPinnedToToolbar()) === false && !ollamaPinHintDismissed;
   } catch {
@@ -771,7 +774,7 @@ async function init() {
   const [data, settings, stored] = await Promise.all([
     loadUsageData(),
     loadSettings(),
-    chrome.storage.local.get(['ollamaActivity', 'ollamaModelsRange'])
+    readLocal(['ollamaActivity', 'ollamaModelsRange'])
   ]);
   currentSettings = settings;
   activityData = stored.ollamaActivity || null;

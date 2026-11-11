@@ -270,13 +270,13 @@ const pad = (n) => String(n).padStart(2, '0');
 /**
  * Activity series for the popup heatmap: requests per local hour (last 24h, exact) and per
  * day (last 30 days; the API cuts days at 00:00 UTC, which the heatmap shows as-is).
- * @returns {{hours: Object<string, number>, days: Object<string, number>}}
+ * @returns {{hours: Object<string, number>, days: Object<string, number>, coverage: import('./activity.js').Coverage|null}}
  */
 export function extractActivity({ day, month }) {
   const hours = {};
   for (const b of day?.buckets ?? []) {
     const start = new Date(b.from);
-    if (isNaN(start) || !(b.request_count > 0)) continue;
+    if (isNaN(start.getTime()) || !(b.request_count > 0)) continue;
     const key = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}T${pad(start.getHours())}`;
     hours[key] = (hours[key] || 0) + b.request_count;
   }
@@ -293,7 +293,7 @@ export function extractActivity({ day, month }) {
     const d = new Date(iso);
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}`;
   };
-  const coverage = first && last && !isNaN(new Date(first.from)) && !isNaN(new Date(last.from))
+  const coverage = first && last && !isNaN(new Date(first.from).getTime()) && !isNaN(new Date(last.from).getTime())
     ? { hoursFrom: keyOf(first.from), hoursTo: keyOf(last.from), daysFrom: month?.buckets?.[0]?.from?.slice(0, 10) ?? null }
     : null;
   return { hours, days, coverage };

@@ -62,7 +62,7 @@ export function heatLevel(value, max) {
  * Last 7 days x 24 hours, oldest day first (today is the last row).
  * @param {Object} buckets
  * @param {Date} [now]
- * @returns {{rows: Array<{date: Date, cells: Array<{hour: number, value: number, future: boolean}>}>, max: number, total: number}}
+ * @returns {{rows: Array<{date: Date, cells: Array<{hour: number, value: number, future: boolean, known: boolean}>}>, max: number, total: number}}
  */
 export function buildWeekGrid(buckets, now = new Date(), covered = null) {
   const rows = [];
@@ -90,7 +90,7 @@ export function buildWeekGrid(buckets, now = new Date(), covered = null) {
  * @param {Object} hours - requests per local date-hour
  * @param {Date} [now]
  * @param {Object} [days] - requests per day as reported by the API
- * @returns {{rows: Array<{start: Date, cells: Array<{date: Date, value: number, future: boolean}>}>, max: number, total: number}}
+ * @returns {{rows: Array<{start: Date, cells: Array<{date: Date, value: number, future: boolean, known: boolean}>}>, max: number, total: number}}
  */
 export function buildMonthGrid(hours, now = new Date(), days = {}, daysFrom = null) {
   const dayTotals = { ...days };
@@ -125,12 +125,19 @@ export function buildMonthGrid(hours, now = new Date(), days = {}, daysFrom = nu
 }
 
 /**
+ * @typedef {{hoursFrom: string, hoursTo: string, daysFrom: string|null}} Coverage
+ *   what one API reading covers (hour keys and the first day)
+ * @typedef {{hours: Object<string, number>, days: Object<string, number>, covered?: string[][], daysFrom?: string}} ActivitySeries
+ *   the stored series: requests per hour and per day, the hour intervals really recorded and the first day known
+ */
+
+/**
  * Merge a fresh API reading into the stored series (the API's numbers replace stored ones
  * for the periods it covers) and drop entries older than the retention window.
- * @param {{hours?: Object, days?: Object}|undefined} stored
- * @param {{hours: Object, days: Object}} fresh
+ * @param {ActivitySeries|undefined} stored
+ * @param {{hours: Object<string, number>, days: Object<string, number>, coverage?: Coverage|null}} fresh
  * @param {Date} [now]
- * @returns {{hours: Object, days: Object}}
+ * @returns {ActivitySeries}
  */
 export function mergeActivity(stored, fresh, now = new Date()) {
   const cutoff = new Date(now.getTime() - ACTIVITY_RETENTION_DAYS * 86400000);
@@ -140,6 +147,7 @@ export function mergeActivity(stored, fresh, now = new Date()) {
 
   const hours = prune({ ...stored?.hours, ...fresh.hours }, cutoffHour);
   const days = prune({ ...stored?.days, ...fresh.days }, cutoffDay);
+  /** @type {ActivitySeries} */
   const result = { hours, days };
 
   // Which hours / days the series really covers. Data stored before this was tracked is

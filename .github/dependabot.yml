@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Actions are pinned to commit SHAs (supply-chain safety); this keeps the pins current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  # Dev dependencies only (tests, audits, build); the extension itself ships no dependencies
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dev-dependencies:
+        patterns: ['*']

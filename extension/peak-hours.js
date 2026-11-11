@@ -34,7 +34,7 @@ export function getPeakStatus(now = new Date()) {
 
   for (let i = 0; i < MAX_LOOKAHEAD_HOURS; i++) {
     if (isPeakAt(next) !== isPeak) {
-      return { isPeak, secondsToChange: Math.round((next - now) / 1000) };
+      return { isPeak, secondsToChange: Math.round((next.getTime() - now.getTime()) / 1000) };
     }
     next.setUTCHours(next.getUTCHours() + 1);
   }

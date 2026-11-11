@@ -5,6 +5,7 @@
  */
 
 import { BUILD } from './build-info.js';
+import { readLocal } from './storage.js';
 
 export const DEFAULT_SETTINGS = {
   refreshIntervalMinutes: 5,
@@ -77,7 +78,7 @@ export async function saveSettings(settings) {
 export async function describeBuild() {
   const version = chrome.runtime.getManifest().version;
   if (BUILD) return `Version ${version} · build ${BUILD.commit} · ${BUILD.builtAt.slice(0, 16).replace('T', ' ')} UTC`;
-  const { ollamaInstalledAt } = await chrome.storage.local.get('ollamaInstalledAt');
+  const { ollamaInstalledAt } = await readLocal('ollamaInstalledAt');
   return `Version ${version} · source folder${ollamaInstalledAt ? ` · loaded ${new Date(ollamaInstalledAt).toLocaleString()}` : ''}`;
 }
 
@@ -90,7 +91,7 @@ export async function describeBuild() {
  * @param {ParentNode} [root]
  */
 export function enhanceNumberInputs(root = document) {
-  for (const input of root.querySelectorAll('input[type="number"]')) {
+  for (const input of /** @type {NodeListOf<HTMLInputElement>} */ (root.querySelectorAll('input[type="number"]'))) {
     if (input.parentElement.classList.contains('stepper')) continue;
 
     const name = input.getAttribute('aria-label') || input.labels?.[0]?.textContent.trim() || 'value';
@@ -190,7 +191,7 @@ async function writeClipboard(text) {
  */
 export async function copyDiagnostics() {
   try {
-    const { ollamaDiagnostics } = await chrome.storage.local.get('ollamaDiagnostics');
+    const { ollamaDiagnostics } = await readLocal('ollamaDiagnostics');
     if (!ollamaDiagnostics?.text) {
       return { success: false, error: 'No data yet - connect your API key and refresh first' };
     }

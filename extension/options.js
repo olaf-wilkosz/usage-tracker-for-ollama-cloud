@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS, migrateSettings, loadSettings, saveSettings, clearAllData, validateSettings, copyDiagnostics,
   sendTestNotification, isConnected, isPinnedToToolbar, showInlineStatus, testNotificationMessage, describeBuild, enhanceNumberInputs, saveApiKey, removeApiKey
 } from './settings.js';
+import { control } from './dom.js';
 
 // DOM elements
 const elements = {
@@ -14,8 +15,8 @@ const elements = {
   connectIntro: document.getElementById('connectIntro'),
   connectSteps: document.getElementById('connectSteps'),
   apiKeyLabel: document.getElementById('apiKeyLabel'),
-  apiKeyInput: document.getElementById('apiKeyInput'),
-  saveKeyBtn: document.getElementById('saveKeyBtn'),
+  apiKeyInput: control('apiKeyInput'),
+  saveKeyBtn: control('saveKeyBtn'),
   removeKeyBtn: document.getElementById('removeKeyBtn'),
   keyStatus: document.getElementById('keyStatus'),
   version: document.getElementById('version'),
@@ -25,20 +26,20 @@ const elements = {
   pinTip: document.getElementById('pinTip'),
   connectSection: document.getElementById('connectSection'),
   openSettingsBtn: document.getElementById('openSettingsBtn'),
-  refreshInterval: document.getElementById('refreshInterval'),
-  notifyWarning: document.getElementById('notifyWarning'),
-  notifyCritical: document.getElementById('notifyCritical'),
-  lowCreditsDays: document.getElementById('lowCreditsDays'),
+  refreshInterval: control('refreshInterval'),
+  notifyWarning: control('notifyWarning'),
+  notifyCritical: control('notifyCritical'),
+  lowCreditsDays: control('lowCreditsDays'),
   buildInfo: document.getElementById('buildInfo'),
-  notifyEnabled: document.getElementById('notifyEnabled'),
-  showPeakBanner: document.getElementById('showPeakBanner'),
+  notifyEnabled: control('notifyEnabled'),
+  showPeakBanner: control('showPeakBanner'),
   testNotifyBtn: document.getElementById('testNotifyBtn'),
   testNotifyStatus: document.getElementById('testNotifyStatus'),
   diagnosticsBtn: document.getElementById('diagnosticsBtn'),
   diagnosticsStatus: document.getElementById('diagnosticsStatus'),
-  clearDataBtn: document.getElementById('clearDataBtn'),
+  clearDataBtn: control('clearDataBtn'),
   clearStatus: document.getElementById('clearStatus'),
-  saveBtn: document.getElementById('saveBtn')
+  saveBtn: control('saveBtn')
 };
 
 /**
