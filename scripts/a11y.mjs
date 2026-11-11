@@ -8,12 +8,13 @@
 //
 // What it cannot judge: whether labels make sense and what a screen reader actually says.
 // That stays a manual check (docs/accessibility-testing.md).
-import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startServer } from './preview-server.mjs';
+import { stopBrowser as closeBrowser } from './stop-browser.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PORT = 8767;
@@ -61,27 +62,8 @@ const proc = spawn(browser, [
 ], { stdio: 'ignore' });
 
 /** Stop the browser with all its child processes and delete its temporary profile. */
-async function stopBrowser() {
-  proc.kill();
-  if (process.platform === 'win32') {
-    // Edge hands over to a differently parented browser process, so the PID we started is not
-    // enough: stop everything that was started with this temporary profile (and nothing else)
-    const dir = profile.replace(/'/g, "''");
-    spawnSync('powershell', ['-NoProfile', '-Command',
-      `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${dir}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`
-    ], { stdio: 'ignore' });
-  }
-  // The browser needs a moment to let go of its files; cleaning up must never fail the run
-  for (let attempt = 0; attempt < 8; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    try {
-      rmSync(profile, { recursive: true, force: true });
-      return;
-    } catch {
-      // still locked: try again
-    }
-  }
-  console.warn(`Could not delete the temporary profile ${profile}; remove it by hand.`);
+function stopBrowser() {
+  return closeBrowser(proc, profile, DEBUG_PORT);
 }
 
 async function openTarget(url) {

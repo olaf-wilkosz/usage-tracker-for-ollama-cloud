@@ -5,11 +5,12 @@
 // so use Edge, Brave or Chromium:
 //
 //   node scripts/smoke.mjs "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
-import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stopBrowser as closeBrowser } from './stop-browser.mjs';
 
 const [chrome, extDir = fileURLToPath(new URL('../extension', import.meta.url))] = process.argv.slice(2);
 const profile = mkdtempSync(join(tmpdir(), 'ut-smoke-'));
@@ -22,27 +23,8 @@ const proc = spawn(chrome, [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Stop the browser with all its child processes and delete its temporary profile. */
-async function stopBrowser() {
-  proc.kill();
-  if (process.platform === 'win32') {
-    // Edge hands over to a differently parented browser process, so the PID we started is not
-    // enough: stop everything that was started with this temporary profile (and nothing else)
-    const dir = profile.replace(/'/g, "''");
-    spawnSync('powershell', ['-NoProfile', '-Command',
-      `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${dir}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`
-    ], { stdio: 'ignore' });
-  }
-  // The browser needs a moment to let go of its files; cleaning up must never fail the run
-  for (let attempt = 0; attempt < 8; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    try {
-      rmSync(profile, { recursive: true, force: true });
-      return;
-    } catch {
-      // still locked: try again
-    }
-  }
-  console.warn(`Could not delete the temporary profile ${profile}; remove it by hand.`);
+function stopBrowser() {
+  return closeBrowser(proc, profile, port);
 }
 
 async function targets() {
