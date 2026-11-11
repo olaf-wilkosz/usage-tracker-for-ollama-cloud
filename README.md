@@ -95,6 +95,7 @@ npm run preview     # popup and options page with sample data at http://localhos
 npm run render      # re-render store screenshots and promo tiles
 npm run probe       # print what the API reports for YOUR account (needs OLLAMA_API_KEY) and check it for consistency
 npm run a11y         # axe-core audit of popup, options page and website (needs Edge, Chrome or Brave)
+npm run site && npm run lighthouse   # Lighthouse on the built website, as CI runs it (needs Chrome)
 npm run smoke -- "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"   # load the extension in a real browser
 ```
 

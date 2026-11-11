@@ -18,6 +18,7 @@
 - **Notifications:** a toast shown under the same id is cleared first (Windows can update such a toast silently instead of popping it up), "Send test" uses a fresh id on every click and explains where to look when nothing shows.
 - **Key management in the popup:** Settings has the account group (connected or not, paste a new key to replace it, remove it); no more detour to the options page.
 - **Recent activity** lists the last 24 hours by hour and the last 14 days by day (the API has no per-request detail).
+- CI scores the built website with Lighthouse (`npm run lighthouse`: accessibility, best practices and SEO must be 100, performance a median of three runs of at least 90); the test scripts close their browsers gracefully instead of killing them.
 - `npm run a11y` also presses Tab through every page: all controls reachable, focus indicator on each, no positive tabindex.
 - **Models range:** the calendar month so far (UTC, default: it is exactly what the usage page on ollama.com shows, "Nov 1–8, UTC"), 7 days or 30 days, all derived from the same daily data with a date caption and total cost; no extra request.
 - **Heatmap:** cells that were never recorded (before the extension started, or while the browser was closed for more than a day) are hatched instead of looking like zero requests.

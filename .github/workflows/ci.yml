@@ -20,6 +20,10 @@ jobs:
         run: npm run check
       - name: Accessibility audit (axe-core in the runner's Chrome)
         run: npm run a11y
+      - name: Build the website and score it with Lighthouse (a11y, best practices, SEO = 100; performance median of 3 >= 90)
+        run: |
+          npm run site
+          npm run lighthouse
       - name: Build store packages
         run: npm run build
       - uses: actions/upload-artifact@v4
