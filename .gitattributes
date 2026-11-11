@@ -1,3 +1,9 @@
-# jednolite końce linii niezależnie od systemu (Windows/macOS/Linux)
-* text=auto
+# Same line endings on every system: LF in the repository and in the working tree, whatever
+# core.autocrlf says (an explicit eol overrides it). Generated files and binaries are left alone.
+* text=auto eol=lf
+
 *.png binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.woff2 binary
